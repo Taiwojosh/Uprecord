@@ -1,0 +1,1 @@
+sed -i "s/setAutosaveStatus('synced');/setAutosaveStatus('synced');\\n        localStorage.removeItem(\`draft_lesson_notes_\${selectedSubjectId}_\${selectedClassId}_\${term}_\${session}\`);/g" src/pages/LessonNotesPage.tsx

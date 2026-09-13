@@ -1,0 +1,447 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Dynamic Slate/Charcoal palette for Light Theme structure */
+  --brand-primary: #1e293b; /* Slate 800 */
+  --brand-accent: #dc2626;  /* High-contrast Crimson Red */
+  --brand-surface: #ffffff;
+  --brand-border: #e2e8f0;  /* Slate 200 */
+  --brand-muted: #94a3b8;   /* Slate 400 */
+
+  /* Crimson Red variations for actions/buttons in Light Theme */
+  --blue-50: #fef2f2;
+  --blue-100: #fee2e2;
+  --blue-200: #fecaca;
+  --blue-300: #fca5a5;
+  --blue-400: #f87171;
+  --blue-500: #ef4444;
+  --blue-600: #dc2626; /* Crimson Red */
+  --blue-700: #b91c1c;
+  --blue-800: #991b1b;
+  --blue-900: #7f1d1d;
+  --blue-950: #450a0a;
+
+  /* Cool Gray and Slate variations for backgrounds/secondary assets in Light Theme */
+  --indigo-50: #f8fafc;
+  --indigo-100: #f1f5f9; /* Cool Gray */
+  --indigo-200: #e2e8f0;
+  --indigo-300: #cbd5e1;
+  --indigo-400: #94a3b8;
+  --indigo-500: #475569;
+  --indigo-600: #1e293b; /* Slate Blue */
+  --indigo-700: #0f172a;
+  --indigo-800: #020617;
+  --indigo-900: #0f172a;
+  --indigo-950: #020617;
+}
+
+.dark {
+  /* Elegant contrastful palette for Dark Theme structure */
+  --brand-primary: #cbd5e1; /* Soft slate white */
+  --brand-accent: #f43f5e;  /* Distinct Glowing Rose-Crimson (never same as Light Red!) */
+  --brand-surface: #0f172a; /* Slate 900 background */
+  --brand-border: #1e293b;  /* Slate 800 */
+  --brand-muted: #475569;   /* Slate 600 */
+
+  /* Adaptive Rose-Crimson scale (soft glow, high readability, eye-safety on Dark Theme) */
+  --blue-50: #2d0a11;  /* Rich Dark Maroon background */
+  --blue-100: #4c111c; /* Deep burgundy container */
+  --blue-200: #6f1d2b;
+  --blue-300: #9e2a3b;
+  --blue-400: #cc354a;
+  --blue-500: #e11d48;
+  --blue-600: #f43f5e; /* Glowing Rose-Crimson, highly visible and distinct from light mode! */
+  --blue-700: #fda4af; /* Rich glow rose */
+  --blue-800: #fecdd3;
+  --blue-900: #ffe4e6;
+  --blue-950: #fff1f2;
+
+  /* Re-mapped Slate series (Inverts dark text elements into readable bright indicators) */
+  --indigo-50: #1e293b;  /* Slate 800 container background */
+  --indigo-100: #0f172a; /* Slate 900 secondary outline */
+  --indigo-200: #334155; /* Slate 700 */
+  --indigo-300: #475569; /* Slate 600 border */
+  --indigo-400: #64748b; /* Slate 500 */
+  --indigo-500: #94a3b8; /* Slate 400 */
+  --indigo-600: #cbd5e1; /* Slate 300 - High legibility on dark background */
+  --indigo-700: #e2e8f0; /* Slate 200 */
+  --indigo-800: #f8fafc; /* Slate 50 */
+  --indigo-900: #ffffff;
+  --indigo-950: #ffffff;
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-primary: var(--brand-primary);
+  --color-accent: var(--brand-accent);
+  --color-surface: var(--brand-surface);
+  --color-border: var(--brand-border);
+  --color-muted: var(--brand-muted);
+  
+  --color-blue-50: var(--blue-50);
+  --color-blue-100: var(--blue-100);
+  --color-blue-200: var(--blue-200);
+  --color-blue-300: var(--blue-300);
+  --color-blue-400: var(--blue-400);
+  --color-blue-500: var(--blue-500);
+  --color-blue-600: var(--blue-600);
+  --color-blue-700: var(--blue-700);
+  --color-blue-800: var(--blue-800);
+  --color-blue-900: var(--blue-900);
+  --color-blue-950: var(--blue-950);
+
+  --color-indigo-50: var(--indigo-50);
+  --color-indigo-100: var(--indigo-100);
+  --color-indigo-200: var(--indigo-200);
+  --color-indigo-300: var(--indigo-300);
+  --color-indigo-400: var(--indigo-400);
+  --color-indigo-500: var(--indigo-500);
+  --color-indigo-600: var(--indigo-600);
+  --color-indigo-700: var(--indigo-700);
+  --color-indigo-800: var(--indigo-800);
+  --color-indigo-900: var(--indigo-900);
+  --color-indigo-950: var(--indigo-950);
+
+  --radius-xs: 2px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-modal: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+@layer base {
+  body {
+    @apply min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased;
+    font-size: 0.875rem; /* 14px equivalent */
+  }
+
+  /* Global reset for default browser focus outlines */
+  input:focus,
+  button:focus,
+  select:focus,
+  textarea:focus,
+  a:focus,
+  [role="button"]:focus {
+    outline: none !important;
+  }
+
+  h1 {
+    @apply text-[1.75rem] font-bold leading-[1.2] text-slate-800 dark:text-slate-50;
+  }
+
+  h2 {
+    @apply text-[1.375rem] font-semibold leading-[1.3] text-slate-800 dark:text-slate-50;
+  }
+
+  h3 {
+    @apply text-[1.125rem] font-semibold leading-[1.4] text-slate-800 dark:text-slate-50;
+  }
+
+  label, .text-small {
+    @apply text-[0.75rem] font-medium leading-[1.2];
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ensure report card takes full page */
+  #report-card-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Hide floating actions / Quick action (+) button when editor workspace is active */
+body.editor-overlay-active #fab-actions-root {
+  display: none !important;
+}
+
+/* ==========================================================================
+   DURABLE DARK MODE THEME REPAIR UTILITIES
+   Ensures all hardcoded light-theme styles adapt beautifully under .dark root.
+   ========================================================================== */
+.dark {
+  color-scheme: dark;
+}
+
+/* Background panel replacements */
+.dark .bg-white {
+  background-color: #0f172a !important; /* slate-900: Perfect elevated card background */
+}
+
+/* Page body backgrounds remain deep dark slate-950 */
+.dark .bg-slate-50,
+.dark .bg-gray-50,
+.dark .bg-[#F8F9FA],
+.dark .bg-\[\#F8F9FA\] {
+  background-color: #020617 !important; /* slate-950: Screen background */
+}
+
+/* Secondary cards/panels (e.g. bg-slate-100 or specific bg-indigo-50 cards) */
+.dark .bg-gray-100,
+.dark .bg-slate-100,
+.dark .bg-indigo-50 {
+  background-color: #1e293b !important; /* slate-800: Dynamic secondary card/sub-panel */
+}
+
+/* Translucencies & opacity-suffixed backgrounds (prevents milky light-gray look) */
+.dark .bg-white\/95,
+.dark .bg-white\/90 {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+}
+
+.dark .bg-slate-50\/50,
+.dark .bg-gray-50\/50,
+.dark .bg-slate-100\/50,
+.dark .bg-gray-100\/50,
+.dark .bg-indigo-50\/50,
+.dark .bg-indigo-50\/70,
+.dark .bg-indigo-55,
+.dark .bg-blue-50/50 {
+  background-color: rgba(30, 41, 59, 0.4) !important; /* slate-800 translucency */
+}
+
+/* Border color overrides to separate cards beautifully */
+.dark .border-slate-50,
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300,
+.dark .border-gray-50,
+.dark .border-gray-150,
+.dark .border-gray-200,
+.dark .border-border {
+  border-color: #1e293b !important; /* slate-800 */
+}
+
+.dark .border-slate-100\/70,
+.dark .border-slate-200\/50,
+.dark .border-slate-200\/20 {
+  border-color: rgba(30, 41, 59, 0.6) !important;
+}
+
+/* Text color repair overrides */
+.dark .text-slate-800,
+.dark .text-slate-900,
+.dark .text-slate-950,
+.dark .text-gray-950,
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-neutral-900,
+.dark .text-neutral-800 {
+  color: #f8fafc !important; /* slate-50 */
+}
+
+.dark .text-slate-700,
+.dark .text-slate-600,
+.dark .text-gray-750,
+.dark .text-gray-700,
+.dark .text-gray-650,
+.dark .text-gray-600,
+.dark .text-neutral-700,
+.dark .text-neutral-600 {
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+/* Base override for gray-400 / slate-400 classes (primarily icons and subtext labels) */
+.dark .text-slate-450,
+.dark .text-slate-400,
+.dark .text-gray-400,
+.dark .text-neutral-400 {
+  color: #e2e8f0 !important; /* slate-200 for extremely legible icons and secondary elements */
+}
+
+.dark .text-slate-550,
+.dark .text-slate-550\/90,
+.dark .text-slate-500,
+.dark .text-gray-500,
+.dark .text-neutral-500 {
+  color: #cbd5e1 !important; /* slate-300 so that mid-gray moves to lighter values */
+}
+
+/* Ensure all SVG elements default to currentColor, inheriting repaired text colors */
+.dark svg {
+  color: currentColor;
+}
+
+/* Hover-state adaptive styling classes */
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-slate-100:hover,
+.dark .group-hover\:bg-gray-50:hover,
+.dark .group:hover .group-hover\:bg-gray-50 {
+  background-color: #1e293b !important; /* slate-800 */
+}
+
+.dark .hover\:text-slate-800:hover,
+.dark .hover\:text-slate-900:hover,
+.dark .hover\:text-gray-950:hover,
+.dark .hover\:text-gray-900:hover,
+.dark .group:hover .group-hover\:text-slate-800 {
+  color: #cbd5e1 !important;
+}
+
+/* Forms & UI Inputs */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="number"],
+.dark input[type="date"],
+.dark select,
+.dark textarea {
+  background-color: #020617 !important; /* deep slate-950 background for entries */
+  color: #f8fafc !important;
+  border-color: #1e293b !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #475569 !important; /* slate-600 placeholder */
+}
+
+/* ==========================================================================
+   CARD BORDERLESS VARIANT SUPPORT
+   Removes drop-shadow, reduces border-radius, and overrides dark background 
+   to slate-800 (#1e293b) instead of slate-900 (#0f172a) for depth contrast.
+   ========================================================================== */
+.bg-white.shadow-card.borderless,
+.bg-white.shadow-card.rounded-xl.borderless,
+.bg-white.shadow-card.rounded-md.borderless,
+.bg-white.shadow-card.rounded-2xl.borderless,
+.bg-white.shadow-card.rounded-3xl.borderless,
+.bg-white.shadow-card.rounded-\[2\.5rem\].borderless,
+.borderless-card {
+  box-shadow: none !important;
+  border-radius: var(--radius-sm, 6px) !important; /* Reduced from lg/xl/2.5rem to sm (6px) */
+}
+
+/* Dark mode override for borderless cards to use slate-800 (#1e293b) */
+.dark .bg-white.shadow-card.borderless,
+.dark .bg-white.shadow-card.rounded-xl.borderless,
+.dark .bg-white.shadow-card.rounded-md.borderless,
+.dark .bg-white.shadow-card.rounded-2xl.borderless,
+.dark .bg-white.shadow-card.rounded-3xl.borderless,
+.dark .bg-white.shadow-card.rounded-\[2\.5rem\].borderless,
+.dark .borderless-card {
+  background-color: #1e293b !important; /* slate-800 */
+  border-color: #334155 !important; /* slate-700 boundary */
+}
+
+/* ==========================================================================
+   SPATIAL & ARCHITECTURAL POLISH
+   Dynamically softens bubble-like borders, removes harsh outlines, and
+   scales down oversized padding/margins for a professional design.
+   ========================================================================== */
+
+/* 1. Cap extreme, bubble-like border-radiuses to clean, modern values */
+.rounded-\[2\.5rem\],
+.rounded-\[2rem\],
+.rounded-\[3rem\] {
+  border-radius: 1rem !important; /* 16px - Standard premium hardware-like corner */
+}
+
+@media (min-width: 768px) {
+  .rounded-\[2\.5rem\] {
+    border-radius: 1.25rem !important; /* 20px - Refined maximum limit for large elements */
+  }
+}
+
+/* 2. Soften/Thin out light mode borders to preserve negative space */
+.border-slate-200,
+.border-slate-100,
+.border-gray-100,
+.border-gray-200,
+.border-border {
+  border-color: rgba(226, 232, 240, 0.45) !important; /* whisper-thin line */
+}
+
+/* 3. Scale down bloated p-10 and p-8 paddings dynamically to prevent content drowning */
+.p-10 {
+  padding: 1.25rem !important; /* 20px on mobile */
+}
+
+.p-8 {
+  padding: 1.25rem !important; /* 20px on mobile */
+}
+
+@media (min-width: 640px) {
+  .p-10 {
+    padding: 1.5rem !important; /* 24px */
+  }
+  .p-8 {
+    padding: 1.5rem !important; /* 24px */
+  }
+}
+
+@media (min-width: 1024px) {
+  .p-10 {
+    padding: 2rem !important; /* 32px maximum padding ceilings */
+  }
+  .p-8 {
+    padding: 1.75rem !important; /* 28px */
+  }
+}
+
+/* 4. Tame overly wide margins and space dividers */
+.space-y-8 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1.5rem !important; /* 24px instead of massive 32px default */
+}
+
+.space-y-12 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 2rem !important; /* 32px instead of massive 48px default */
+}
+
+/* Dark mode specific style adjustments for selected icons */
+.dark div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > button:nth-of-type(1) > div:nth-of-type(1) > svg:nth-of-type(1) {
+  color: #2c0303 !important;
+}
+
+.dark div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > button:nth-of-type(2) > div:nth-of-type(1) > svg:nth-of-type(1) {
+  color: #000000 !important;
+}
+
+.dark div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > svg:nth-of-type(1) {
+  color: #000000 !important;
+}
+
+div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > button:nth-of-type(1) > div:nth-of-type(2) > h3:nth-of-type(1) {
+  color: #20303c !important;
+}
+
+div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > button:nth-of-type(1) > div:nth-of-type(2) > p:nth-of-type(1) {
+  color: #040506 !important;
+}
+
+div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > button:nth-of-type(1) {
+  color: #121d2a !important;
+}
+
+
+

@@ -1,0 +1,1 @@
+sed -i "s/import { TraitInput } from '..\/components\/data-entry\/TraitInput';/import { TraitInput } from '..\/components\/data-entry\/TraitInput';\\nimport { RemarkInput } from '..\/components\/data-entry\/RemarkInput';/g" src/pages/DataEntryPage.tsx

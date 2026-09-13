@@ -1,0 +1,6 @@
+{
+  "name": "UpRecord",
+  "description": "Modern, cloud-based school management system and digital reports portal for secondary education.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

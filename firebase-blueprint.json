@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "License": {
+      "title": "License",
+      "description": "A license key for the ScholarSync application.",
+      "type": "object",
+      "properties": {
+        "licenseKey": { "type": "string", "description": "The unique license key." },
+        "email": { "type": "string", "format": "email", "description": "The email address associated with the license." },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "The expiration date of the license." },
+        "plan": { "type": "string", "enum": ["trial", "monthly", "term", "yearly", "lifetime"], "description": "The subscription plan." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The date the license was created." },
+        "status": { "type": "string", "enum": ["active", "expired", "revoked"], "description": "The status of the license." },
+        "hwid": { "type": "string", "description": "The hardware ID associated with the license." }
+      },
+      "required": ["licenseKey", "email", "plan", "createdAt", "status"]
+    },
+    "DailyAttendance": {
+      "title": "DailyAttendance",
+      "description": "Daily attendance logs for students.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "number", "description": "ID of the student." },
+        "date": { "type": "string", "description": "ISO date string (YYYY-MM-DD)." },
+        "status": { "type": "string", "enum": ["present", "absent", "late", "excused"], "description": "Attendance status." },
+        "teacherId": { "type": "number", "description": "ID of the teacher marking the logs." },
+        "classId": { "type": "number", "description": "ID of the classroom." },
+        "term": { "type": "number", "enum": [1, 2, 3], "description": "Current school term." },
+        "session": { "type": "string", "description": "Academic year session." },
+        "markedByRole": { "type": "string", "enum": ["admin", "teacher"], "description": "Role who recorded the entry." },
+        "markedByName": { "type": "string", "description": "Name of who recorded the entry." },
+        "schoolId": { "type": "string", "description": "Encompassed school ID." }
+      },
+      "required": ["studentId", "date", "status", "classId", "term", "session", "schoolId"]
+    },
+    "CumulativeAttendance": {
+      "title": "CumulativeAttendance",
+      "description": "Cumulative term attendance records for students.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "number", "description": "ID of the student." },
+        "term": { "type": "number", "enum": [1, 2, 3], "description": "Current school term." },
+        "session": { "type": "string", "description": "Academic year session." },
+        "daysPresent": { "type": "number", "description": "Total active days present." },
+        "totalDays": { "type": "number", "description": "Total school days in term." },
+        "teacherRemark": { "type": "string", "description": "Optional class teacher summary comment." },
+        "principalRemark": { "type": "string", "description": "Optional head principal summary comment." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp of modification." },
+        "schoolId": { "type": "string", "description": "Encompassed school ID." }
+      },
+      "required": ["studentId", "term", "session", "daysPresent", "totalDays", "schoolId"]
+    }
+  },
+  "firestore": {
+    "/licenses/{licenseKey}": {
+      "schema": { "$ref": "License" },
+      "description": "Licenses collection."
+    },
+    "/dailyAttendance/{attendanceId}": {
+      "schema": { "$ref": "DailyAttendance" },
+      "description": "Daily attendance registry."
+    },
+    "/attendance/{attendanceId}": {
+      "schema": { "$ref": "CumulativeAttendance" },
+      "description": "Cumulative term-based attendance summaries."
+    }
+  }
+}
