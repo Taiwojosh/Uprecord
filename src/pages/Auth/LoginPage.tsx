@@ -17,7 +17,6 @@ const CLOUD_REGISTRY_SCHOOLS = [
     address: 'Abuja, FCT, Nigeria',
     brandColor: '#0284c7', // Sky-600
     email: 'admin@riverside.edu',
-    testPassword: 'admin',
     teacherEmail: 'mensah@riverside.edu',
     studentAdmission: 'RIV-2025-001'
   },
@@ -28,7 +27,6 @@ const CLOUD_REGISTRY_SCHOOLS = [
     address: 'Ikeja, Lagos, Nigeria',
     brandColor: '#16a34a', // Green-600
     email: 'admin@standardgrace.edu',
-    testPassword: 'admin',
     teacherEmail: 'mensah@standardgrace.edu',
     studentAdmission: 'SGR-2025-001'
   },
@@ -39,7 +37,6 @@ const CLOUD_REGISTRY_SCHOOLS = [
     address: 'Accra, Ghana',
     brandColor: '#DC2626', // Crimson Red
     email: 'admin@uprecord.edu',
-    testPassword: 'admin',
     teacherEmail: 'mensah@uprecord.edu',
     studentAdmission: 'UPR-2025-001'
   }
@@ -205,19 +202,17 @@ export function LoginPage() {
           ]
         });
 
-        // Create Admin credential profile
+        // Create Admin user profile
         await db.users.add({
           email: school.email,
-          password: school.testPassword,
           fullName: 'School Administrator',
           role: 'admin',
           schoolId: school.schoolId
         });
 
-        // Create Teacher credential profile
+        // Create Teacher user profile
         const teacherId = await db.users.add({
           email: school.teacherEmail,
-          password: 'password123',
           fullName: 'Dr. Robert Mensah',
           role: 'teacher',
           schoolId: school.schoolId,
@@ -260,10 +255,9 @@ export function LoginPage() {
           schoolId: school.schoolId
         });
 
-        // Setup student login portal profile
+        // Setup student portal profile
         await db.users.add({
           email: `${school.studentAdmission.toLowerCase()}@uprecord.local`,
-          password: 'password123',
           fullName: 'Alex Johnson',
           role: 'student',
           studentId: Number(studentId),
@@ -427,87 +421,27 @@ export function LoginPage() {
     setIsLoading(true);
     setError(null);
 
-    const activeSchoolId = settings?.schoolId || 'school-1';
-
     try {
-      if (email && password) {
-        await new Promise(resolve => setTimeout(resolve, 600));
-        
-        let existingUser;
-        if (role === 'student') {
-          const student = await db.students
-            .where('admissionNumber')
-            .equalsIgnoreCase(email.trim())
-            .filter(s => s.schoolId === activeSchoolId)
-            .first();
-          if (student) {
-            existingUser = await db.users
-              .where('studentId')
-              .equals(student.id!)
-              .filter(u => u.schoolId === activeSchoolId)
-              .first();
-          }
+      if (!email || !password) {
+        setError('Please fill all credentials.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Authenticate against the backend API
+      // The server handles password hashing, verification, and JWT signing
+      const result = await login(email.trim(), password);
+
+      if (result.success) {
+        if (role === 'teacher') {
+          navigate('/teacher-portal');
+        } else if (role === 'student') {
+          navigate('/student-portal');
         } else {
-          existingUser = await db.users
-            .where('email')
-            .equalsIgnoreCase(email.trim())
-            .filter(u => u.schoolId === activeSchoolId)
-            .first();
-        }
-        
-        if (existingUser) {
-          if (existingUser.role !== role) {
-            setError(`This account belongs to a different role (${existingUser.role.toUpperCase()}). Please select the correct tab above.`);
-            setIsLoading(false);
-            return;
-          }
-          
-          const expectedPassword = existingUser.password || (existingUser.role === 'admin' ? 'admin' : 'password123');
-          if (password !== expectedPassword) {
-            setError('Incorrect password. Please try again.');
-            setIsLoading(false);
-            return;
-          }
-          
-          await login('token-' + Date.now(), {
-            ...existingUser,
-            id: existingUser.id!.toString()
-          });
-          
-          if (role === 'teacher') {
-            navigate('/teacher-portal');
-          } else if (role === 'student') {
-            navigate('/student-portal');
-          } else {
-            navigate('/dashboard');
-          }
-        } else {
-          // Special fallback for initial default admin of school-1
-          if (activeSchoolId === 'school-1' && email === 'admin@scholar-sync.local' && password === 'admin' && role === 'admin') {
-            const adminExists = await db.users.where('email').equals('admin@scholar-sync.local').first();
-            if (!adminExists) {
-              await db.users.add({
-                email: 'admin@scholar-sync.local',
-                fullName: 'System Administrator',
-                role: 'admin',
-                schoolId: 'school-1',
-                password: 'admin'
-              });
-            }
-            await login('token-' + Date.now(), {
-              email: 'admin@scholar-sync.local',
-              fullName: 'System Administrator',
-              role: 'admin',
-              schoolId: 'school-1',
-              id: 'local-admin'
-            });
-            navigate('/dashboard');
-            return;
-          }
-          setError(`No valid ${role} account found matching credentials for this school workspace.`);
+          navigate('/dashboard');
         }
       } else {
-         setError('Please fill all credentials.');
+        setError(result.error || 'Invalid credentials. Please try again.');
       }
     } catch (err: any) {
       setError('Unable to authenticate. Please verify and try again.');
@@ -661,81 +595,6 @@ export function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Quick Access Credentials Panel */}
-          {settings && (
-            <div className="mt-6 p-4 rounded-3xl bg-amber-50/40 border border-amber-100/50 space-y-2.5 text-left animate-fade-in">
-              <div className="flex items-center gap-1.5 text-amber-800">
-                <Sparkles size={11} className="text-amber-500 shrink-0" />
-                <span className="text-[9px] font-black uppercase tracking-widest leading-none">
-                  Quick Evaluation Profiles (Click to fill)
-                </span>
-              </div>
-              
-              <div className="flex flex-col gap-1.5">
-                {schoolUsers && schoolUsers.length > 0 ? (
-                  schoolUsers.filter(u => u.role === role).slice(0, 3).map((usr) => {
-                    const displayCredential = usr.role === 'student' 
-                      ? (studentsList?.find(s => s.id === usr.studentId)?.admissionNumber || 'SCH-2025-001')
-                      : usr.email;
-                      
-                    const displayPassword = usr.password || (usr.role === 'admin' ? 'admin' : 'password123');
-
-                    return (
-                      <button
-                        key={usr.id}
-                        type="button"
-                        onClick={() => {
-                          setEmail(displayCredential);
-                          setPassword(displayPassword);
-                          showToast(`Pre-filled ${usr.fullName || usr.role} credentials!`, 'info');
-                        }}
-                        className="w-full text-left bg-white hover:bg-amber-100/30 border border-amber-200/20 hover:border-amber-200/60 p-2.5 rounded-xl flex items-center justify-between transition-all group"
-                      >
-                        <div>
-                          <span className="text-[9px] font-black text-amber-800 uppercase tracking-tight block">
-                            {usr.fullName || 'Member Portal'}
-                          </span>
-                          <span className="text-[11px] font-bold text-slate-600 block truncate max-w-[210px] mt-0.5">
-                            {usr.role === 'student' ? `ID: ${displayCredential}` : displayCredential}
-                          </span>
-                        </div>
-                        <div className="text-right shrink-0 flex items-center gap-2">
-                          <span className="text-[9px] font-mono font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                            {displayPassword}
-                          </span>
-                          <span className="text-[8px] font-black text-amber-600 group-hover:translate-x-0.5 transition-all text-right uppercase tracking-wider block">
-                            Fill &rarr;
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })
-                ) : (
-                  <p className="text-[10px] text-slate-400 italic font-semibold">No pre-configured users found. Use default admin/admin fallback or register.</p>
-                )}
-                {schoolUsers && schoolUsers.filter(u => u.role === role).length === 0 && (
-                  <div className="p-3 bg-white rounded-xl border border-amber-100/20 text-center">
-                    <p className="text-[10px] text-slate-400 font-bold italic">
-                      No credentials indexed for "{role.toUpperCase()}" selection on this school registry.
-                    </p>
-                    {role === 'admin' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEmail('admin@scholar-sync.local');
-                          setPassword('admin');
-                        }}
-                        className="mt-1 text-[9px] text-blue-600 font-black uppercase hover:underline"
-                      >
-                        Click to use Local System Admin (admin@scholar-sync.local / admin)
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
           <div className="mt-8 pt-6 border-t border-slate-50 flex flex-col items-center gap-3">
              <div className="flex items-center gap-2 text-xs text-slate-400">

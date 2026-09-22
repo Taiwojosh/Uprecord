@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, ArrowLeft, Loader2, Users, Mail, User } from 'lucide-react';
-import { db } from '../db/db';
+import { UserPlus, ArrowLeft, Loader2, Users, Mail, User, Copy, Check, ExternalLink } from 'lucide-react';
+import api from '../lib/api';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +15,8 @@ export const AccountCreatorPage: React.FC = () => {
   const [newUserFullName, setNewUserFullName] = useState('');
   const [newUserRole, setNewUserRole] = useState<'teacher' | 'student'>('teacher');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [setupUrl, setSetupUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,22 +26,32 @@ export const AccountCreatorPage: React.FC = () => {
     }
     
     setIsCreatingUser(true);
+    setSetupUrl(null);
     try {
-      await db.users.add({
+      const res = await api.post('/auth/invite', {
         email: newUserEmail,
         fullName: newUserFullName,
         role: newUserRole,
-        schoolId: user?.schoolId || 'school-1',
-        password: 'password123',
-        isAdmin: false
       });
-      showToast(`${newUserRole} created successfully!`, 'success');
+
+      const url = `${window.location.origin}${res.data.setupUrl}`;
+      setSetupUrl(url);
+      showToast(`${newUserRole.toUpperCase()} account created! Invitation link ready.`, 'success');
       setNewUserEmail('');
       setNewUserFullName('');
     } catch (err: any) {
-      showToast(err.message || 'Failed to create user', 'error');
+      showToast(err.response?.data?.error || err.message || 'Failed to create user', 'error');
     } finally {
       setIsCreatingUser(false);
+    }
+  };
+
+  const copySetupLink = () => {
+    if (setupUrl) {
+      navigator.clipboard.writeText(setupUrl);
+      setCopied(true);
+      showToast('Activation link copied to clipboard!', 'success');
+      setTimeout(() => setCopied(false), 3000);
     }
   };
 
@@ -108,6 +120,34 @@ export const AccountCreatorPage: React.FC = () => {
             CREATE PORTAL ACCESS
           </button>
         </form>
+
+        {setupUrl && (
+          <div className="mt-8 p-6 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-3">
+            <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+              <Check className="w-5 h-5 text-emerald-600" />
+              <span>User Account Created Successfully!</span>
+            </div>
+            <p className="text-xs text-emerald-700">
+              Share this single-use activation link with the user. They will use it to choose their own secure password:
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={setupUrl}
+                className="w-full px-3 py-2 text-xs bg-white border border-emerald-200 rounded-lg text-gray-700 font-mono select-all"
+              />
+              <button
+                type="button"
+                onClick={copySetupLink}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shrink-0"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

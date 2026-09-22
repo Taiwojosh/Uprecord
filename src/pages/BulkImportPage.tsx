@@ -348,13 +348,13 @@ export const BulkImportPage: React.FC = () => {
                       await db.users.add({
                         email,
                         fullName: student.fullName,
-                        password: password || 'password123',
                         role: 'student',
                         schoolId: activeSchoolId,
                         isAdmin: false,
-                        studentId: student.id!
+                        studentId: student.id!,
+                        status: 'pending_activation',
                       });
-                      addLog('success', `Provisioned user login account for email "${email}"`, sheetName, rowNum);
+                      addLog('success', `Provisioned user account for email "${email}" (ready for password setup)`, sheetName, rowNum);
                     }
                   } catch (uErr: any) {
                     addLog('warning', `Failed to setup user login for email "${email}": ${uErr.message || uErr}`, sheetName, rowNum);

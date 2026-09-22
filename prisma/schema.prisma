@@ -1,0 +1,447 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Multi-Tenant Core ───────────────────────────────────────────────
+
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  slogan    String?
+  address   String?
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users              User[]
+  students           Student[]
+  classes            Class[]
+  subjects           Subject[]
+  grades             Grade[]
+  traitDefinitions   TraitDefinition[]
+  traitGrades        TraitGrade[]
+  attendance         Attendance[]
+  dailyAttendance    DailyAttendance[]
+  comments           Comment[]
+  curriculum         Curriculum[]
+  lessonNotes        LessonNote[]
+  payments           Payment[]
+  announcements      Announcement[]
+  tasks              Task[]
+  resultApprovals    ResultApproval[]
+  auditLogs          AuditLog[]
+  settings           SchoolSettings?
+  activation         Activation?
+}
+
+model User {
+  id                Int       @id @default(autoincrement())
+  email             String    @unique
+  passwordHash      String?   // Nullable until activation/password setup is completed
+  fullName          String
+  role              String    @default("teacher") // superadmin | admin | teacher | student
+  isAdmin           Boolean   @default(false)
+  isSuperAdmin      Boolean   @default(false)
+  department        String?
+  phone             String?
+  status            String    @default("active") // active | pending_activation | suspended
+  joinDate          String?
+  studentId         Int?      // Link to Student if role is "student"
+  setupToken        String?   @unique // Cryptographic activation/password setup token
+  setupTokenExpires DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Tenant (nullable for platform superadmin who is not bound to a single school)
+  schoolId          String?
+  school            School?   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+// ─── Academic Models ─────────────────────────────────────────────────
+
+model Student {
+  id               Int      @id @default(autoincrement())
+  admissionNumber  String
+  fullName         String
+  dateOfBirth      String?
+  gender           String   // Male | Female
+  classId          Int
+  departmentId     Int?
+  departmentName   String?
+  email            String?
+  phone            String?
+  status           String   @default("Active") // Active | Inactive | Graduated | Suspended
+  enrolledDate     String?
+  photoBase64      String?
+  address          String?
+  parentPhone      String?
+  parentEmail      String?
+  previousSchool   String?
+  medicalNotes     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Tenant
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  // Relations
+  grades          Grade[]
+  traitGrades     TraitGrade[]
+  attendance      Attendance[]
+  dailyAttendance DailyAttendance[]
+  comments        Comment[]
+  payments        Payment[]
+
+  @@unique([schoolId, admissionNumber])
+  @@index([schoolId])
+  @@index([classId])
+}
+
+model Class {
+  id           Int     @id @default(autoincrement())
+  className    String
+  teacherName  String?
+  teacherId    Int?
+  level        String  // Primary | junior | senior | Secondary
+  departmentId Int?
+  capacity     Int?
+
+  // Tenant
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, className])
+  @@index([schoolId])
+}
+
+model Subject {
+  id          Int     @id @default(autoincrement())
+  subjectName String
+  isCore      Boolean @default(false)
+  teacherId   Int?
+  classId     Int?
+
+  // Tenant
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  // Relations
+  grades     Grade[]
+  curriculum Curriculum[]
+  lessonNotes LessonNote[]
+
+  @@index([schoolId])
+}
+
+model Grade {
+  id        Int     @id @default(autoincrement())
+  studentId Int
+  subjectId Int
+  term      Int     // 1 | 2 | 3
+  session   String
+  caScores  String  // JSON stringified Record<string, number>
+  examScore Float
+  total     Float?
+  grade     String?
+  remark    String?
+  updatedAt String?
+
+  // Tenant
+  schoolId String
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student  Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject  Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, studentId, subjectId, term, session])
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([subjectId])
+}
+
+model TraitDefinition {
+  id           Int    @id @default(autoincrement())
+  traitName    String
+  displayOrder Int
+  category     String // affective | psychomotor
+
+  // Tenant
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  traitGrades TraitGrade[]
+
+  @@index([schoolId])
+}
+
+model TraitGrade {
+  id        Int     @id @default(autoincrement())
+  studentId Int
+  traitId   Int
+  term      Int
+  session   String
+  score     Float
+  updatedAt String?
+
+  // Tenant
+  schoolId String
+  school   School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student  Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  trait    TraitDefinition @relation(fields: [traitId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, studentId, traitId, term, session])
+  @@index([schoolId])
+}
+
+model Attendance {
+  id              Int     @id @default(autoincrement())
+  studentId       Int
+  term            Int
+  session         String
+  daysPresent     Int
+  totalDays       Int
+  teacherRemark   String?
+  principalRemark String?
+  updatedAt       String?
+  syncStatus      String? // pending | synced
+
+  // Tenant
+  schoolId String
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student  Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, studentId, term, session])
+  @@index([schoolId])
+}
+
+model DailyAttendance {
+  id           Int     @id @default(autoincrement())
+  studentId    Int
+  date         String  // ISO date string (YYYY-MM-DD)
+  status       String  // present | absent | late | excused
+  teacherId    Int
+  classId      Int
+  term         Int
+  session      String
+  markedByRole String? // admin | teacher
+  markedByName String?
+  syncStatus   String? // pending | synced
+
+  // Tenant
+  schoolId String
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student  Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, studentId, date, term, session])
+  @@index([schoolId])
+  @@index([date])
+}
+
+model Comment {
+  id               Int     @id @default(autoincrement())
+  studentId        Int
+  term             Int
+  session          String
+  teacherComment   String?
+  principalComment String?
+
+  // Tenant
+  schoolId String
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student  Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, studentId, term, session])
+  @@index([schoolId])
+}
+
+model Curriculum {
+  id        Int     @id @default(autoincrement())
+  subjectId Int
+  classId   Int
+  term      Int
+  session   String
+  topics    String  // JSON stringified array
+  updatedAt String?
+
+  // Tenant
+  schoolId String
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject  Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, subjectId, classId, term, session])
+  @@index([schoolId])
+}
+
+model LessonNote {
+  id        Int     @id @default(autoincrement())
+  subjectId Int
+  classId   Int
+  term      Int
+  session   String
+  weeks     String  // JSON stringified array
+  updatedAt String?
+
+  // Tenant
+  schoolId String
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject  Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, subjectId, classId, term, session])
+  @@index([schoolId])
+}
+
+// ─── Finance & Communication ─────────────────────────────────────────
+
+model Payment {
+  id            Int    @id @default(autoincrement())
+  studentId     Int
+  amount        Float
+  category      String // Tuition | Books | Uniform | Bus | Other
+  term          Int
+  session       String
+  paymentMethod String // Bank Transfer | Cash | POS | Online
+  status        String @default("pending") // paid | pending | failed
+  date          String
+
+  // Tenant
+  schoolId String
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student  Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([studentId])
+}
+
+model Announcement {
+  id         Int     @id @default(autoincrement())
+  title      String
+  content    String
+  isPinned   Boolean @default(false)
+  authorName String
+  createdAt  String
+
+  // Tenant
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+model Task {
+  id        Int     @id @default(autoincrement())
+  label     String
+  priority  String  // URGENT | PENDING | LOW
+  color     String  // red | amber | slate
+  completed Boolean @default(false)
+  createdAt String
+
+  // Tenant
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+model ResultApproval {
+  id         Int     @id @default(autoincrement())
+  classId    Int
+  term       Int
+  session    String
+  status     String  @default("Draft") // Draft | Submitted | Published
+  approvedBy Int?
+  approvedAt String?
+
+  // Tenant
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, classId, term, session])
+  @@index([schoolId])
+}
+
+model AuditLog {
+  id        Int    @id @default(autoincrement())
+  userId    String
+  userName  String
+  action    String
+  details   String
+  timestamp String
+
+  // Tenant
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([timestamp])
+}
+
+// ─── School Configuration ────────────────────────────────────────────
+
+model SchoolSettings {
+  id                       Int     @id @default(autoincrement())
+  schoolName               String
+  schoolSlogan             String?
+  address                  String?
+  logoBase64               String?
+  principalName            String?
+  principalSignatureBase64 String?
+  brandColor               String?
+  nextTermDate             String?
+  termClosingDate          String?
+  resumptionDate           String?
+  currentTerm              Int     @default(1)
+  currentSession           String?
+  totalSubjectScore        Float?
+  examMaxScore             Float?
+  caMaxScore               Float?
+  caComponents             String? // JSON stringified CAComponent[]
+  daysSchoolOpen           Int?
+  department1Name          String?
+  department1Level         String?
+  department2Name          String?
+  department2Level         String?
+  department3Name          String?
+  department3Level         String?
+  enableLevelSubjectFiltering Boolean @default(false)
+  gradingScale             String? // JSON stringified IGradingScale[]
+  reportCardTemplate       String? // classic | modern | minimal
+  enableGradeColors        Boolean @default(false)
+  enableCumulativeReport   Boolean @default(false)
+  autoHideCumulativeForEarlierTerms Boolean @default(false)
+  enableDataOverride       Boolean @default(false)
+  publishedTerms           String? // JSON stringified string[]
+  restrictTeacherActionsNoAttendance Boolean @default(false)
+  allowTeachersViewFeeStatus Boolean @default(false)
+  restrictUnpaidStudentsAccess Boolean @default(false)
+
+  // Tenant — one-to-one
+  schoolId String @unique
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+}
+
+// ─── License / Activation ────────────────────────────────────────────
+
+model Activation {
+  id             Int      @id @default(autoincrement())
+  hardwareId     String
+  licenseKey     String
+  activatedAt    String
+  expiresAt      String?
+  plan           String   // trial | monthly | term | yearly | lifetime
+  lastVerifiedAt String
+
+  // Tenant — one-to-one
+  schoolId String @unique
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+}

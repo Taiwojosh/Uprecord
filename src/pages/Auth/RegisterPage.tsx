@@ -83,12 +83,11 @@ export function RegisterPage() {
         // Seed 1 Facilitator account
         const t1Id = await db.users.add({
           email: 'mensah@uprecord.local',
-          password: 'password123',
           fullName: 'Dr. Robert Mensah',
           role: 'teacher',
           schoolId: targetSchoolId,
           department: 'Senior Secondary',
-          status: 'active',
+          status: 'pending_activation',
           joinDate: new Date().toISOString().split('T')[0]
         });
 

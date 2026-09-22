@@ -5,30 +5,37 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Automatically sends and receives HttpOnly cookies
 });
 
-// Add a request interceptor to include the auth token
+// Helper to extract a cookie value by name in browser context
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+  return match ? decodeURIComponent(match[3]) : null;
+}
+
+// Request interceptor: Attach CSRF token on outgoing state-modifying requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('scholarSync_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const csrfToken = getCookie('uprecord_csrf_token');
+    if (csrfToken) {
+      config.headers['X-CSRF-Token'] = csrfToken;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Add a response interceptor to handle errors
+// Response interceptor to handle session invalidation / expiration
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login if not already there
-      localStorage.removeItem('scholarSync_token');
-      if (window.location.pathname !== '/login') {
+      // Session invalid or expired — clear user cache and redirect if not already on auth/landing pages
+      localStorage.removeItem('scholarSync_user');
+      const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+      if (pathname !== '/login' && pathname !== '/register' && pathname !== '/' && pathname !== '/admin' && pathname !== '/setup-password') {
         window.location.href = '/login';
       }
     }

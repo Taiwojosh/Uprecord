@@ -17,10 +17,10 @@ export const BulkTeacherImportModal: React.FC<{ isOpen: boolean; onClose: () => 
     setIsExporting(true);
     try {
       const wb = XLSX.utils.book_new();
-      const headers = ['Full Name', 'Email', 'Phone', 'Department', 'Role (Admin/Teacher)', 'Password'];
+      const headers = ['Full Name', 'Email', 'Phone', 'Department', 'Role (Admin/Teacher)'];
       
-      const ws = XLSX.utils.aoa_to_sheet([headers, ['Jane Smith', 'jane.smith@school.local', '1234567890', 'Science', 'Teacher', 'password123']]);
-      ws['!cols'] = [{ wch: 30 }, { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 15 }];
+      const ws = XLSX.utils.aoa_to_sheet([headers, ['Jane Smith', 'jane.smith@school.local', '1234567890', 'Science', 'Teacher']]);
+      ws['!cols'] = [{ wch: 30 }, { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 20 }];
       
       XLSX.utils.book_append_sheet(wb, ws, 'Teachers Template');
       XLSX.writeFile(wb, 'Teacher_Import_Template.xlsx');
@@ -76,8 +76,7 @@ export const BulkTeacherImportModal: React.FC<{ isOpen: boolean; onClose: () => 
               department: row['Department']?.toString().trim() || 'Science',
               role: 'teacher' as const,
               isAdmin: roleStr === 'admin',
-              password: row['Password']?.toString().trim() || 'password123',
-              status: 'active' as const,
+              status: 'pending_activation' as const,
               joinDate: new Date().toISOString()
             });
             importedCount++;

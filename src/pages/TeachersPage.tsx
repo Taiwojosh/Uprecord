@@ -63,7 +63,7 @@ export const TeachersPage: React.FC = () => {
   useEffect(() => {
     if (location.state?.addTeacher) {
       setEditingTeacher(null);
-      setRegFormData({ fullName: '', email: '', phone: '', department: '', isAdmin: false, password: 'password123' });
+      setRegFormData({ fullName: '', email: '', phone: '', department: '', isAdmin: false });
       setIsRegModalOpen(true);
       // Clean state after reading
       navigate(location.pathname, { replace: true, state: {} });
@@ -115,7 +115,6 @@ export const TeachersPage: React.FC = () => {
     phone: '',
     department: '',
     isAdmin: false,
-    password: 'password123'
   });
 
   const settings = useLiveQuery(async () => {
@@ -151,7 +150,6 @@ export const TeachersPage: React.FC = () => {
           email: regFormData.email,
           phone: regFormData.phone,
           department: regFormData.department,
-          password: regFormData.password,
           isAdmin: regFormData.isAdmin
         });
         showToast('Faculty member updated successfully', 'success');
@@ -162,7 +160,6 @@ export const TeachersPage: React.FC = () => {
             email: regFormData.email,
             phone: regFormData.phone,
             department: regFormData.department,
-            password: regFormData.password,
             isAdmin: regFormData.isAdmin
           });
         }
@@ -174,14 +171,13 @@ export const TeachersPage: React.FC = () => {
           department: regFormData.department,
           role: 'teacher',
           schoolId: user?.schoolId || 'school-1',
-          password: regFormData.password || 'password123',
           isAdmin: regFormData.isAdmin,
-          status: 'active',
+          status: 'pending_activation',
           joinDate: new Date().toISOString()
         });
-        showToast('Faculty member onboarded successfully', 'success');
+        showToast('Faculty member onboarded. Account ready for password setup.', 'success');
       }
-      setRegFormData({ fullName: '', email: '', phone: '', department: '', isAdmin: false, password: 'password123' });
+      setRegFormData({ fullName: '', email: '', phone: '', department: '', isAdmin: false });
       setIsRegModalOpen(false);
       setEditingTeacher(null);
     } catch (error) {
@@ -242,7 +238,7 @@ export const TeachersPage: React.FC = () => {
                <button 
                  onClick={() => {
                    setEditingTeacher(null);
-                   setRegFormData({ fullName: '', email: '', phone: '', department: '', isAdmin: false, password: 'password123' });
+                   setRegFormData({ fullName: '', email: '', phone: '', department: '', isAdmin: false });
                    setIsRegModalOpen(true);
                  }}
                  className="px-3.5 py-2.5 md:px-6 md:py-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-2xl font-black text-[0.55rem] md:text-[0.625rem] uppercase tracking-wider md:tracking-widest hover:bg-black dark:hover:bg-white dark:hover:text-slate-900 transition-all shadow-xl shadow-slate-900/10 dark:shadow-none flex items-center justify-center gap-1.5 w-full sm:w-auto"
@@ -359,7 +355,6 @@ export const TeachersPage: React.FC = () => {
                                   phone: teacher.phone || '',
                                   department: teacher.department || '',
                                   isAdmin: teacher.role === 'admin' || teacher.isAdmin || false,
-                                  password: teacher.password || (teacher.role === 'admin' ? 'admin' : 'password123')
                                 });
                                 setIsRegModalOpen(true);
                               }}
@@ -487,7 +482,6 @@ export const TeachersPage: React.FC = () => {
                                 phone: teacher.phone || '',
                                 department: teacher.department || '',
                                 isAdmin: teacher.role === 'admin' || teacher.isAdmin || false,
-                                password: teacher.password || (teacher.role === 'admin' ? 'admin' : 'password123')
                               });
                               setIsRegModalOpen(true);
                             }}
@@ -620,7 +614,6 @@ export const TeachersPage: React.FC = () => {
                              phone: selectedTeacher!.phone || '',
                              department: selectedTeacher!.department || '',
                              isAdmin: selectedTeacher!.role === 'admin' || selectedTeacher!.isAdmin || false,
-                             password: selectedTeacher!.password || (selectedTeacher!.role === 'admin' ? 'admin' : 'password123')
                            });
                            setIsRegModalOpen(true);
                          }}
@@ -702,7 +695,6 @@ const RegistrationModal: React.FC<{
   isRegistering: boolean,
   isEditing?: boolean
 }> = ({ isOpen, onClose, formData, setFormData, onSubmit, isRegistering, isEditing }) => {
-  const [showPassword, setShowPassword] = useState(false);
   
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit Faculty Profile" : "Onboard New Faculty Member"}>
@@ -740,23 +732,11 @@ const RegistrationModal: React.FC<{
              </div>
           </div>
           <div className="space-y-2">
-             <label className="text-[0.625rem] font-black text-gray-400 uppercase tracking-widest ml-1">Portal Password</label>
-             <div className="relative w-full">
-               <input 
-                 required
-                 type={showPassword ? "text" : "password"}
-                 value={formData.password || ''}
-                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                 placeholder="Enter portal password"
-                 className="w-full pl-5 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:bg-white outline-none transition-all font-bold text-sm"
-               />
-               <button
-                 type="button"
-                 onClick={() => setShowPassword(!showPassword)}
-                 className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-               >
-                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-               </button>
+             <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-100 text-left">
+                <span className="text-[9px] font-black text-amber-800 uppercase tracking-widest block">Activation Security</span>
+                <p className="text-[11px] font-semibold text-amber-700 mt-1">
+                  Faculty members activate their accounts and choose their own private password via their activation invitation. Administrators never see or assign passwords.
+                </p>
              </div>
           </div>
 

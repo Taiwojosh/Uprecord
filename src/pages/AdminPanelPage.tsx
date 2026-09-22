@@ -5,15 +5,23 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { db, IUser } from '../db/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import api from '../lib/api';
 
 export const AdminPanelPage: React.FC = () => {
-  const [adminSecret, setAdminSecret] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState('');
   const [duration, setDuration] = useState('1year');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    api.get('/admin/me')
+      .then(() => setIsAuthenticated(true))
+      .catch(() => setIsAuthenticated(false));
+  }, []);
 
   // User Mgmt State
   const [newUserEmail, setNewUserEmail] = useState('');
@@ -63,21 +71,19 @@ export const AdminPanelPage: React.FC = () => {
       const [email, fullName] = line.split(',').map(s => s.trim());
       if (email && fullName) {
         try {
-          await db.users.add({
+          await api.post('/auth/invite', {
             email,
             fullName,
             role: newUserRole,
-            schoolId: user!.schoolId,
-            password: 'password123'
           });
           successCount++;
-        } catch (e) {
+        } catch {
           failCount++;
         }
       }
     }
 
-    showToast(`Processed ${lines.length} users. ${successCount} successful, ${failCount} failed.`, successCount > 0 ? 'success' : 'error');
+    showToast(`Processed ${lines.length} users. ${successCount} invited, ${failCount} failed.`, successCount > 0 ? 'success' : 'error');
     if (successCount > 0) {
       setBulkInput('');
     }
@@ -104,13 +110,17 @@ export const AdminPanelPage: React.FC = () => {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminSecret === 'SS-MASTER-2024') {
-      setIsAuthenticated(true);
-      showToast('Master access granted', 'success');
-    } else {
-      showToast('Invalid मास्टर secret key', 'error');
+    try {
+      const response = await api.post('/admin/login', { email: adminEmail, password: adminPassword });
+      if (response.data.user) {
+        setIsAuthenticated(true);
+        showToast('Superadmin access granted', 'success');
+      }
+    } catch (err: any) {
+      const message = err?.response?.data?.error || 'Invalid superadmin credentials';
+      showToast(message, 'error');
     }
   };
 
@@ -123,20 +133,17 @@ export const AdminPanelPage: React.FC = () => {
     
     setIsCreatingUser(true);
     try {
-      await db.users.add({
+      const response = await api.post('/auth/invite', {
         email: newUserEmail,
         fullName: newUserFullName,
         role: newUserRole,
-        schoolId: user!.schoolId,
-        password: 'password123',
-        isAdmin: newUserRole === 'teacher' ? isAdminTeacher : false
       });
-      showToast(`${newUserRole} created successfully!`, 'success');
+      showToast(`${newUserRole} invited! Setup link generated.`, 'success');
       setNewUserEmail('');
       setNewUserFullName('');
       setIsAdminTeacher(false);
     } catch (err: any) {
-      showToast(err.message || 'Failed to create user', 'error');
+      showToast(err?.response?.data?.error || 'Failed to create user invitation', 'error');
     } finally {
       setIsCreatingUser(false);
     }
@@ -199,14 +206,29 @@ export const AdminPanelPage: React.FC = () => {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-[0.625rem] font-black text-gray-400 uppercase tracking-widest ml-1">Master Secret</label>
+              <label className="text-[0.625rem] font-black text-gray-400 uppercase tracking-widest ml-1">Superadmin Email</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                <input 
+                  type="email" 
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  placeholder="superadmin@uprecord.local"
+                  required
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-4 focus:ring-amber-500/10 focus:bg-white outline-none transition-all"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[0.625rem] font-black text-gray-400 uppercase tracking-widest ml-1">Password</label>
               <div className="relative">
                 <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
                 <input 
                   type="password" 
-                  value={adminSecret}
-                  onChange={(e) => setAdminSecret(e.target.value)}
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
                   placeholder="••••••••••••"
+                  required
                   className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-4 focus:ring-amber-500/10 focus:bg-white outline-none transition-all"
                 />
               </div>
@@ -215,7 +237,7 @@ export const AdminPanelPage: React.FC = () => {
               type="submit"
               className="w-full py-4 bg-gray-900 text-white font-black rounded-xl hover:bg-black transition-all active:scale-[0.98]"
             >
-              UNLOCK PANEL
+              SUPERADMIN LOGIN
             </button>
             <button 
               type="button"

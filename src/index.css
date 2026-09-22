@@ -199,7 +199,6 @@ body.editor-overlay-active #fab-actions-root {
 /* Page body backgrounds remain deep dark slate-950 */
 .dark .bg-slate-50,
 .dark .bg-gray-50,
-.dark .bg-[#F8F9FA],
 .dark .bg-\[\#F8F9FA\] {
   background-color: #020617 !important; /* slate-950: Screen background */
 }
@@ -224,7 +223,7 @@ body.editor-overlay-active #fab-actions-root {
 .dark .bg-indigo-50\/50,
 .dark .bg-indigo-50\/70,
 .dark .bg-indigo-55,
-.dark .bg-blue-50/50 {
+.dark .bg-blue-50\/50 {
   background-color: rgba(30, 41, 59, 0.4) !important; /* slate-800 translucency */
 }
 

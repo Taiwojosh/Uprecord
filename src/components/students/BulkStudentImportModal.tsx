@@ -23,10 +23,10 @@ export const BulkStudentImportModal: React.FC<{ isOpen: boolean; onClose: () => 
       }
       
       const wb = XLSX.utils.book_new();
-      const headers = ['Admission Number', 'Full Name', 'Date of Birth (YYYY-MM-DD)', 'Gender (Male/Female)', 'Class Name', 'Student Email', 'Student Password', 'Parent Email', 'Parent Phone', 'Department'];
+      const headers = ['Admission Number', 'Full Name', 'Date of Birth (YYYY-MM-DD)', 'Gender (Male/Female)', 'Class Name', 'Student Email', 'Parent Email', 'Parent Phone', 'Department'];
       
-      const ws = XLSX.utils.aoa_to_sheet([headers, ['STU-001', 'John Doe', '2010-05-14', 'Male', classes[0].className, 'john.doe@school.edu', 'password123', 'parent@example.com', '1234567890', 'Science']]);
-      ws['!cols'] = [{ wch: 20 }, { wch: 30 }, { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 20 }];
+      const ws = XLSX.utils.aoa_to_sheet([headers, ['STU-001', 'John Doe', '2010-05-14', 'Male', classes[0].className, 'john.doe@school.edu', 'parent@example.com', '1234567890', 'Science']]);
+      ws['!cols'] = [{ wch: 20 }, { wch: 30 }, { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 15 }, { wch: 20 }];
       
       XLSX.utils.book_append_sheet(wb, ws, 'Students Template');
       XLSX.writeFile(wb, 'Student_Import_Template.xlsx');
@@ -182,17 +182,16 @@ export const BulkStudentImportModal: React.FC<{ isOpen: boolean; onClose: () => 
                 if (existingUser) {
                   await db.users.update(existingUser.id!, {
                     fullName: fullName,
-                    password: password || existingUser.password
                   });
                 } else {
                   await db.users.add({
                     email,
                     fullName: fullName,
-                    password: password || 'password123',
                     role: 'student',
                     schoolId: activeSchoolId,
                     isAdmin: false,
-                    studentId: addedStudentId
+                    studentId: addedStudentId,
+                    status: 'pending_activation'
                   });
                 }
               } catch (userErr) {
