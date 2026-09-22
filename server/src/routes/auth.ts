@@ -7,13 +7,14 @@ import { authenticate, signToken, setAuthCookie, clearAuthCookie, type JwtPayloa
 import { enforceTenant } from '../middleware/tenant.js';
 import { requireAdmin } from '../middleware/rbac.js';
 import { setCsrfCookie } from '../middleware/csrf.js';
+import { allocateSchoolSlug } from '../scripts/backfillSlugs.js';
 
 const router = Router();
 
 // ─── Validation Schemas ──────────────────────────────────────────────
 
 const registerSchema = z.object({
-  schoolName: z.string().min(2, 'School name must be at least 2 characters'),
+  schoolName: z.string().trim().min(2, 'School name must be at least 2 characters').max(100),
   email: z.string().email('Valid email is required'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   fullName: z.string().min(2, 'Full name is required'),
@@ -62,15 +63,25 @@ router.post('/register', async (req: Request, res: Response) => {
       return;
     }
 
+    // Registration must occur on the central platform host, not inside an individual school portal
+    if (req.resolvedSchool) {
+      res.status(400).json({ error: 'School registration must be completed on the main GlobePen platform.' });
+      return;
+    }
+
     const { schoolName, email, password, fullName, address, slogan } = parsed.data;
 
     // Hash the initial admin's password
     const passwordHash = await bcrypt.hash(password, 12);
 
     const result = await prisma.$transaction(async (tx) => {
+      const candidateSlug = await allocateSchoolSlug(tx, schoolName);
+
       const school = await tx.school.create({
         data: {
           name: schoolName,
+          slug: candidateSlug,
+          portalTitle: `${schoolName} Portal`,
           address: address || null,
           slogan: slogan || null,
         },
@@ -185,6 +196,18 @@ router.post('/login', async (req: Request, res: Response) => {
     if (user.status !== 'active') {
       res.status(403).json({ error: 'This account is inactive. Contact your administrator.' });
       return;
+    }
+
+    // Hostname/Tenant Agreement: Reject wrong-school login before issuing session cookie!
+    if (req.resolvedSchool) {
+      if (user.isSuperAdmin || user.role === 'superadmin') {
+        res.status(403).json({ error: 'Superadmin accounts must log in via the central platform portal.' });
+        return;
+      }
+      if (user.schoolId !== req.resolvedSchool.id) {
+        res.status(403).json({ error: 'Your account does not belong to this school portal.' });
+        return;
+      }
     }
 
     const tokenPayload: JwtPayload = {
@@ -315,6 +338,10 @@ router.get('/verify-setup-token', async (req: Request, res: Response) => {
       return;
     }
 
+    if (req.resolvedSchool && user.schoolId !== req.resolvedSchool.id) {
+      res.status(403).json({ error: 'This activation link belongs to a different school portal.' });
+      return;
+    }
     res.json({
       valid: true,
       email: user.email,
@@ -354,6 +381,12 @@ router.post('/setup-password', async (req: Request, res: Response) => {
 
     if (!user) {
       res.status(400).json({ error: 'Invalid or expired setup token.' });
+      return;
+    }
+
+    // Hostname/Tenant Agreement: User activation must occur on matching school portal
+    if (req.resolvedSchool && user.schoolId !== req.resolvedSchool.id) {
+      res.status(403).json({ error: 'This activation link belongs to a different school portal.' });
       return;
     }
 
@@ -423,6 +456,18 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
     if (user.status !== 'active') {
       res.status(403).json({ error: 'This account is inactive.' });
       return;
+    }
+
+    // Hostname/Tenant Agreement: Assert session matches current school portal
+    if (req.resolvedSchool) {
+      if (user.isSuperAdmin || user.role === 'superadmin') {
+        res.status(403).json({ error: 'Superadmin sessions are restricted to platform administration routes.' });
+        return;
+      }
+      if (user.schoolId !== req.resolvedSchool.id) {
+        res.status(403).json({ error: 'Hostname tenant mismatch: Your session belongs to a different school portal.' });
+        return;
+      }
     }
 
     res.json({

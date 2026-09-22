@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Loader2, ArrowRight, School, UserPlus, Building } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowRight, School, UserPlus, Building, AlertTriangle } from 'lucide-react';
 import api from '../../lib/api';
 import { Logo } from '../../components/ui/Logo';
-import { db } from '../../db/db';
+import { useBrand } from '../../context/BrandContext';
 
 export function RegisterPage() {
+  const { branding, isSchoolPortal } = useBrand();
   const [schoolName, setSchoolName] = useState('');
   const [adminName, setAdminName] = useState('');
   const [email, setEmail] = useState('');
@@ -21,184 +22,19 @@ export function RegisterPage() {
 
     try {
       if (schoolName && adminName && email && password) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Check if user already exists
-        const existing = await db.users.where('email').equalsIgnoreCase(email.trim()).first();
-        if (existing) {
-          setError('A user account with this email address is already registered.');
-          setIsLoading(false);
-          return;
-        }
-
-        const targetSchoolId = 'school-' + Math.random().toString(36).substring(2, 11);
-
-        // Persistent user creation in local Dev Dexie DB
-        await db.users.add({
-          email: email.trim().toLowerCase(),
-          password: password,
-          fullName: adminName.trim(),
-          role: 'admin',
-          schoolId: targetSchoolId
+        // Backend registration is authoritative. Never create a local account on failure.
+        const response = await api.post('/auth/register', {
+          schoolName: schoolName.trim(), fullName: adminName.trim(),
+          email: email.trim().toLowerCase(), password,
         });
-
-        // Add new settings for the new school
-          await db.settings.add({
-            schoolId: targetSchoolId,
-            schoolName: schoolName.trim(),
-            schoolSlogan: 'Molding Future Leaders',
-            address: 'Nigeria',
-            logoBase64: '',
-            principalName: 'The Principal',
-            principalSignatureBase64: '',
-            brandColor: '#0f172a', // Slate-900
-            nextTermDate: '',
-            termClosingDate: '',
-            currentTerm: 1,
-            currentSession: '2025/2026',
-            totalSubjectScore: 100,
-            examMaxScore: 60,
-            caMaxScore: 40,
-            caComponents: [
-              { id: 'ca1', name: 'Continuous Assessment 1', maxScore: 20 },
-              { id: 'ca2', name: 'Continuous Assessment 2', maxScore: 20 }
-            ],
-            daysSchoolOpen: 90,
-            department1Name: 'Primary School',
-            department2Name: 'Junior Secondary',
-            department3Name: 'Senior Secondary',
-            gradingScale: [
-              { grade: 'A1', minScore: 75, remark: 'Excellent' },
-              { grade: 'B2', minScore: 70, remark: 'Very Good' },
-              { grade: 'B3', minScore: 65, remark: 'Good' },
-              { grade: 'C4', minScore: 60, remark: 'Credit' },
-              { grade: 'C5', minScore: 55, remark: 'Credit' },
-              { grade: 'C6', minScore: 50, remark: 'Credit' },
-              { grade: 'D7', minScore: 45, remark: 'Pass' },
-              { grade: 'E8', minScore: 40, remark: 'Pass' },
-              { grade: 'F9', minScore: 0, remark: 'Fail' }
-            ]
-          });
-
-        // Seed 1 Facilitator account
-        const t1Id = await db.users.add({
-          email: 'mensah@uprecord.local',
-          fullName: 'Dr. Robert Mensah',
-          role: 'teacher',
-          schoolId: targetSchoolId,
-          department: 'Senior Secondary',
-          status: 'pending_activation',
-          joinDate: new Date().toISOString().split('T')[0]
-        });
-
-        // Seed 1 Class
-        const c1Id = await db.classes.add({
-          className: 'SS 1 Science',
-          level: 'senior',
-          teacherId: Number(t1Id),
-          teacherName: 'Dr. Robert Mensah',
-          capacity: 35,
-          schoolId: targetSchoolId
-        });
-
-        // Seed 1 Subject
-        const s1Id = await db.subjects.add({
-          subjectName: 'Mathematics',
-          isCore: true,
-          classId: Number(c1Id),
-          teacherId: Number(t1Id),
-          departmentIds: [3],
-          schoolId: targetSchoolId
-        });
-
-        // Seed 1 Student
-        const stu1Id = await db.students.add({
-          admissionNumber: 'UPR-2025-001',
-          fullName: 'Adamu Haruna',
-          dateOfBirth: '2012-05-14',
-          gender: 'Male',
-          classId: Number(c1Id),
-          parentPhone: '+2348033123456',
-          parentEmail: 'haruna@uprecord.local',
-          status: 'Active',
-          enrolledDate: '2025-09-01',
-          schoolId: targetSchoolId
-        });
-
-        // Seed 1 Term Grade
-        await db.grades.add({
-          studentId: Number(stu1Id),
-          subjectId: Number(s1Id),
-          term: 1,
-          session: '2025/2026',
-          caScores: { ca1: 12, ca2: 14 },
-          examScore: 45,
-          total: 71,
-          grade: 'B2',
-          remark: 'Good.',
-          schoolId: targetSchoolId
-        });
-
-        // Seed 1 Payment
-        await db.payments.add({
-          studentId: Number(stu1Id),
-          amount: 100000,
-          category: 'Tuition',
-          term: 1,
-          session: '2025/2026',
-          paymentMethod: 'Bank Transfer',
-          status: 'paid',
-          date: new Date().toISOString(),
-          schoolId: targetSchoolId
-        });
-
-        // Seed 1 Attendance
-        await db.attendance.add({
-          studentId: Number(stu1Id),
-          term: 1,
-          session: '2025/2026',
-          daysPresent: 85,
-          totalDays: 90,
-          schoolId: targetSchoolId
-        });
-
-        // Seed 1 Announcement
-        await db.announcements.add({
-          title: "Welcome!",
-          content: `Welcome to ${schoolName.trim()}.`,
-          isPinned: true,
-          authorName: "System",
-          createdAt: new Date().toISOString(),
-          schoolId: targetSchoolId
-        });
-
-        // Seed 1 Task
-        await db.tasks.add({
-          label: "Initial Setup",
-          priority: "LOW",
-          color: "slate",
-          completed: false,
-          createdAt: new Date().toISOString(),
-          schoolId: targetSchoolId
-        });
-
-        // Seed 1 Audit Log
-        await db.auditLogs.add({
-          userId: 'system',
-          userName: 'System Administrator',
-          action: 'School registered',
-          details: 'Seeded minimal demo data.',
-          timestamp: new Date().toISOString(),
-          schoolId: targetSchoolId
-        });
-
-        localStorage.setItem('scholarSync_activeSchoolId', targetSchoolId);
+        if (!response.data?.school?.id) throw new Error('Registration response was incomplete.');
+        setPassword('');
         navigate('/login', { state: { message: 'Registration successful! Please login with your new credentials.' } });
       } else {
         setError('Please fill all fields');
       }
     } catch (err: any) {
-      setError('Failed to register school instance. Please try again.');
+      setError(err.response?.data?.error || 'Registration failed. Check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -207,20 +43,40 @@ export function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <div className="w-full max-w-md">
-        <div className="flex flex-col items-center mb-10">
-          <Logo size={60} variant="icon" />
-          <div className="mt-6 text-3xl font-sans tracking-tight">
-            <span className="font-black text-slate-900">Up</span>
-            <span className="font-medium text-[#DC2626]">Record</span>
+        <div className="flex flex-col items-center mb-8">
+          <Logo size={56} variant="icon" />
+          <div className="mt-4 text-3xl font-sans tracking-tight">
+            <span className="font-black text-slate-900">Globe</span>
+            <span className="font-bold text-[var(--brand-primary,#2563EB)]">Pen</span>
           </div>
-          <p className="text-gray-400 font-bold uppercase tracking-widest text-[0.625rem] mt-2">Create New SaaS Account</p>
+          <p className="text-gray-400 font-bold uppercase tracking-widest text-[0.625rem] mt-2">New Institution Onboarding</p>
         </div>
 
         <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-gray-200 border border-gray-100">
-          <div className="mb-8">
-            <h2 className="text-2xl font-black text-gray-900">Register School</h2>
-            <p className="text-gray-500 text-sm mt-1">Join the future of school management</p>
-          </div>
+          {isSchoolPortal ? (
+            <div className="text-center py-4 space-y-4">
+              <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 mx-auto">
+                <AlertTriangle size={24} />
+              </div>
+              <h2 className="text-lg font-black text-slate-900">School Portal Detected</h2>
+              <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                You are currently accessing <strong>{branding.schoolName || 'a school portal'}</strong>. New school registrations must be created through the main GlobePen platform.
+              </p>
+              <div className="pt-2">
+                <Link
+                  to="/login"
+                  className="block w-full py-3.5 bg-slate-900 text-white font-bold rounded-2xl hover:bg-black transition-all text-xs uppercase tracking-wider text-center"
+                >
+                  Return to Portal Sign In
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="mb-8">
+                <h2 className="text-2xl font-black text-gray-900">Register School</h2>
+                <p className="text-gray-500 text-sm mt-1">Join the future of school management</p>
+              </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
@@ -311,6 +167,8 @@ export function RegisterPage() {
               </Link>
             </p>
           </div>
+            </>
+          )}
         </div>
       </div>
     </div>

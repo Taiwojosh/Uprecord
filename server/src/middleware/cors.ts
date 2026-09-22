@@ -1,67 +1,109 @@
-import { Request, Response, NextFunction } from 'express';
 import cors, { CorsOptions } from 'cors';
+import prisma from '../lib/prisma.js';
+import { normalizeHostname, getPlatformBaseDomains } from '../config/domains.js';
 
 /**
  * Strict Credentialed CORS Configuration
  * 
- * Accounts for:
- * 1. Default configured CLIENT_URL
- * 2. Local development origins (localhost:3000, localhost:5173)
- * 3. Future custom school domains (via ALLOWED_ORIGINS env, *.uprecord.edu, or same-origin host match)
- * 4. Strictly sets credentials: true with exact origin reflection (never wildcard '*')
+ * Enforces:
+ * 1. Configured CLIENT_URL and ALLOWED_ORIGINS
+ * 2. Local development origins (only outside production)
+ * 3. Platform subdomains (*.<baseDomain>)
+ * 4. Verified school custom domains (requires HTTPS in production)
+ * 5. Rejection of unknown origins and unverified custom domains
  */
 
-function getAllowedOrigins(): (string | RegExp)[] {
-  const origins: (string | RegExp)[] = [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5173',
-  ];
-
-  if (process.env.CLIENT_URL) {
-    origins.push(process.env.CLIENT_URL);
+async function isOriginAllowed(origin: string): Promise<boolean> {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(origin);
+  } catch {
+    return false;
   }
 
-  // Support comma-separated extra domains from environment
+  const host = normalizeHostname(parsedUrl.hostname);
+  const protocol = parsedUrl.protocol;
+  const isProd = process.env.NODE_ENV === 'production';
+
+  // In production, enforce HTTPS for all browser origins
+  if (isProd && protocol !== 'https:') {
+    return false;
+  }
+
+  // 1. Configured CLIENT_URL match
+  if (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) {
+    return true;
+  }
+
+  // 2. Configured ALLOWED_ORIGINS match
   if (process.env.ALLOWED_ORIGINS) {
-    const extra = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean);
-    origins.push(...extra);
+    const allowed = process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+    if (allowed.includes(origin)) {
+      return true;
+    }
   }
 
-  // Allowed custom domain patterns (e.g. *.uprecord.edu, *.uprecord.local)
-  origins.push(/^https?:\/\/([a-zA-Z0-9-]+\.)*uprecord\.(edu|local|app)$/);
+  // 3. Localhost origins (allowed only outside production)
+  if (!isProd) {
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '::1' ||
+      host.endsWith('.localhost')
+    ) {
+      return true;
+    }
+  }
 
-  return origins;
+  // 4. Platform base domain subdomains (e.g. *.globepen.com, *.globepen.local)
+  const baseDomains = getPlatformBaseDomains();
+  for (const base of baseDomains) {
+    if (host === base || host.endsWith(`.${base}`)) {
+      return true;
+    }
+  }
+
+  // 5. Database-backed verified custom school domains
+  try {
+    const school = await prisma.school.findFirst({
+      where: {
+        customDomain: host,
+        customDomainVerified: true,
+      },
+      select: { id: true },
+    });
+
+    if (school) {
+      return true;
+    }
+  } catch (err) {
+    console.error('[CORS Domain Lookup Error]', err);
+  }
+
+  return false;
 }
 
 export const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (e.g. server-to-server, curl, same-origin navigations, mobile apps)
+    // Allow requests with no origin (e.g. server-to-server, curl, mobile apps)
     if (!origin) {
       callback(null, true);
       return;
     }
 
-    const allowedOrigins = getAllowedOrigins();
-
-    const isAllowed = allowedOrigins.some((allowed) => {
-      if (typeof allowed === 'string') {
-        return origin === allowed;
-      }
-      if (allowed instanceof RegExp) {
-        return allowed.test(origin);
-      }
-      return false;
-    });
-
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS Error: Origin '${origin}' is not allowed by policy.`));
-    }
+    isOriginAllowed(origin)
+      .then((allowed) => {
+        if (allowed) {
+          callback(null, true);
+        } else {
+          callback(new Error(`CORS Error: Origin '${origin}' is not allowed by policy.`));
+        }
+      })
+      .catch((err) => {
+        callback(err);
+      });
   },
-  credentials: true, // Required for HttpOnly cookies across origins
+  credentials: true, // Required for HttpOnly cookies across portals
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'x-csrf-token', 'X-Requested-With'],
   exposedHeaders: ['Set-Cookie'],

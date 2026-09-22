@@ -108,7 +108,7 @@ export const LivePreview: React.FC = () => {
               Student Report Card
             </div>
             <div className="text-[0.5rem] font-bold text-white/40 italic">
-              UpRecord System
+              GlobePen
             </div>
           </div>
         </div>

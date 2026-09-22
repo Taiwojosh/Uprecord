@@ -6,6 +6,13 @@ import { setCsrfCookie } from '../middleware/csrf.js';
 import prisma from '../lib/prisma.js';
 
 const router = Router();
+router.use((req, res, next) => {
+  if (!req.isPlatformHost) {
+    res.status(403).json({ error: 'Platform administration is available only on the central platform host.' });
+    return;
+  }
+  next();
+});
 
 const superadminLoginSchema = z.object({
   email: z.string().email('Valid superadmin email is required'),
@@ -43,7 +50,7 @@ router.post('/login', async (req: Request, res: Response) => {
       },
     });
 
-    if (!user) {
+    if (!user || !user.passwordHash) {
       res.status(401).json({ error: 'Invalid superadmin credentials.' });
       return;
     }

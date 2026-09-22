@@ -26,12 +26,14 @@ import {
 import { Sidebar } from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useImmersiveMode } from '../../context/ImmersiveContext';
+import { useBrand } from '../../context/BrandContext';
 import { Logo } from '../ui/Logo';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const AppLayout: React.FC = () => {
+  const { branding, isSchoolPortal } = useBrand();
   const { isImmersive, setImmersive, toggleImmersive } = useImmersiveMode();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
@@ -316,20 +318,17 @@ export const AppLayout: React.FC = () => {
               <Menu className="w-6 h-6" />
             </button>
             
-            {/* School Identifier */}
+            {/* School / Portal Identifier */}
             <div className="hidden sm:flex items-center gap-3">
-               <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white overflow-hidden shadow-inner">
-                  {settings?.logoBase64 ? (
-                     <img src={settings.logoBase64} alt="School Logo" className="w-full h-full object-cover" />
-                  ) : (
-                     <Globe size={20} />
-                  )}
-               </div>
-               <div>
-                  <h1 className="text-sm font-black text-gray-900 dark:text-slate-100 tracking-tight leading-none truncate max-w-[200px]">
-                    {settings?.schoolName || 'UpRecord Portal'}
-                  </h1>
-               </div>
+              <Logo size={36} variant="icon" />
+              <div>
+                <h1 className="text-sm font-black text-gray-900 dark:text-slate-100 tracking-tight leading-none truncate max-w-[220px]">
+                  {isSchoolPortal ? (branding.portalTitle || branding.schoolName) : 'GlobePen Hub'}
+                </h1>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
+                  {isSchoolPortal ? (branding.schoolName || 'School Portal') : 'Platform Operations'}
+                </p>
+              </div>
             </div>
 
             {/* Top Bar Global Search Container */}

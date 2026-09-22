@@ -13,8 +13,10 @@ import {
   Heart,
   Plus,
   Trash2,
-  Edit2
+  Edit2,
+  Globe
 } from 'lucide-react';
+import { DomainBrandingManager } from '../components/settings/DomainBrandingManager';
 import { useSettings } from '../hooks/useSettings';
 import { useLicense } from '../hooks/useLicense';
 import { useToast } from '../context/ToastContext';
@@ -32,7 +34,7 @@ import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 
 export const SettingsPage: React.FC = () => {
-  const { settings, updateSettings, isLoading } = useSettings();
+  const { settings, updateSettings, isLoading, error: settingsError, reload } = useSettings();
   const { user } = useAuth();
   const { isPremium } = useLicense();
   const { showToast } = useToast();
@@ -63,13 +65,13 @@ export const SettingsPage: React.FC = () => {
   const [editingTrait, setEditingTrait] = useState<ITrait | null>(null);
   const [confirmDeleteTrait, setConfirmDeleteTrait] = useState<number | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'identity' | 'academic' | 'grading' | 'traits' | 'governance'>('identity');
+  const [activeTab, setActiveTab] = useState<'identity' | 'branding' | 'academic' | 'grading' | 'traits' | 'governance'>('identity');
 
   useEffect(() => {
     // Check if a specific tab was requested via location state
     const requestedTab = (location.state as { tab?: string })?.tab;
-    if (requestedTab && ['identity', 'academic', 'grading', 'traits', 'governance'].includes(requestedTab)) {
-      setActiveTab(requestedTab as 'identity' | 'academic' | 'grading' | 'traits' | 'governance');
+    if (requestedTab && ['identity', 'branding', 'academic', 'grading', 'traits', 'governance'].includes(requestedTab)) {
+      setActiveTab(requestedTab as any);
     }
   }, [location]);
 
@@ -157,6 +159,9 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  if (settingsError) {
+    return <div role="alert" className="p-8 space-y-4"><p>{settingsError}</p><button onClick={reload} className="underline">Retry loading settings</button></div>;
+  }
   if (isLoading || !settings) {
     return (
       <div className="h-[60vh] flex items-center justify-center">
@@ -197,6 +202,7 @@ export const SettingsPage: React.FC = () => {
       <div className="flex items-center gap-2 p-1.5 bg-gray-100 rounded-2xl w-full overflow-x-auto no-scrollbar border border-gray-200">
         {[
           { id: 'identity', label: 'Identity', icon: School },
+          { id: 'branding', label: 'Portal & Domain', icon: Globe },
           { id: 'academic', label: 'Academic Logic', icon: Settings2 },
           { id: 'traits', label: 'Trait Framework', icon: Heart },
           { id: 'grading', label: 'Grading & CA', icon: Calculator },
@@ -232,8 +238,8 @@ export const SettingsPage: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                 <div className="sm:col-span-2 space-y-2">
-                  <label className="text-sm font-bold text-gray-700 tracking-tight">School Name</label>
-                  <input 
+                  <label htmlFor="school-name" className="text-sm font-bold text-gray-700 tracking-tight">School Name</label>
+                  <input id="school-name" 
                     type="text" 
                     value={formData.schoolName || ''}
                     onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
@@ -243,8 +249,8 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 <div className="sm:col-span-2 space-y-2">
-                  <label className="text-sm font-bold text-gray-700 tracking-tight">School Slogan / Motto</label>
-                  <input 
+                  <label htmlFor="school-slogan" className="text-sm font-bold text-gray-700 tracking-tight">School Slogan / Motto</label>
+                  <input id="school-slogan" 
                     type="text" 
                     value={formData.schoolSlogan || ''}
                     onChange={(e) => setFormData({ ...formData, schoolSlogan: e.target.value })}
@@ -254,8 +260,8 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 <div className="sm:col-span-2 space-y-2">
-                  <label className="text-sm font-bold text-gray-700 tracking-tight">School Address</label>
-                  <textarea 
+                  <label htmlFor="school-address" className="text-sm font-bold text-gray-700 tracking-tight">School Address</label>
+                  <textarea id="school-address" 
                     value={formData.address || ''}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     placeholder="Full physical address"
@@ -293,9 +299,9 @@ export const SettingsPage: React.FC = () => {
                 />
 
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 tracking-tight">Brand Color</label>
+                  <label htmlFor="primary-color" className="text-sm font-bold text-gray-700 tracking-tight">Brand Color</label>
                   <div className="flex items-center gap-4 p-4 bg-gray-50 border border-gray-100 rounded-2xl">
-                    <input 
+                    <input id="primary-color" 
                       type="color" 
                       value={formData.brandColor || '#1d4ed8'}
                       onChange={(e) => setFormData({ ...formData, brandColor: e.target.value })}
@@ -334,6 +340,12 @@ export const SettingsPage: React.FC = () => {
                 </div>
               </div>
             </section>
+          )}
+
+          {activeTab === 'branding' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <DomainBrandingManager />
+            </div>
           )}
 
           {activeTab === 'academic' && (

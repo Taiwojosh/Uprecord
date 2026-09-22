@@ -152,14 +152,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       `}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="h-[60px] flex items-center justify-between px-6 border-b border-slate-700/50">
-            <div className="flex items-center gap-2.5">
-              <Logo size={28} variant="icon" theme="dark" />
-              <div className="text-lg tracking-tight font-sans">
-                <span className="font-black text-white">Up</span>
-                <span className="font-medium text-[#DC2626]">Record</span>
-              </div>
-            </div>
+          <div className="h-[64px] flex items-center justify-between px-5 border-b border-slate-700/50">
+            <Logo size={28} variant="full" theme="dark" />
             <button 
               onClick={onClose}
               className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-700 lg:hidden transition-colors"
@@ -185,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                       className={({ isActive }) => `
                         relative flex items-center gap-3 px-6 py-2.5 text-[0.8125rem] font-medium transition-all duration-200
                         ${isActive 
-                          ? 'bg-slate-700 text-white border-l-[3px] border-[#DC2626]' 
+                          ? 'bg-slate-700/80 text-white border-l-[3px] border-[var(--brand-primary,#2563EB)]' 
                           : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'}
                       `}
                     >

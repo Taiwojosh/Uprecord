@@ -332,6 +332,8 @@ export class UpRecordDB extends Dexie {
       resultApprovals: '++id, [classId+term+session], classId, term, session, schoolId'
     });
 
+    this.version(24).stores({}).upgrade(tx => tx.table('users').toCollection().modify(user => { delete user.password; }));
+
     this.on('populate', () => {
       this.users.add({
         email: 'admin@scholar-sync.local',

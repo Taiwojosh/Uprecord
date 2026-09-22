@@ -18,8 +18,21 @@ model School {
   slogan    String?
   address   String?
   logoUrl   String?
+  slug      String?  @unique
+  portalTitle String?
+  brandColor  String?
+  secondaryColor String?
+  contactEmail String?
+  contactPhone String?
+  customDomain String? @unique
+  customDomainVerified Boolean @default(false)
+  domainVerificationToken String?
+  domainVerifiedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([customDomain])
 
   // Relations
   users              User[]

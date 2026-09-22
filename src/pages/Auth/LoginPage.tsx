@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Lock, Loader2, Eye, EyeOff, AlertCircle, Search, Building, Globe, Sparkles, Check, ArrowRight, X, Upload } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useBrand } from '../../context/BrandContext';
 import { Logo } from '../../components/ui/Logo';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
@@ -43,6 +44,7 @@ const CLOUD_REGISTRY_SCHOOLS = [
 ];
 
 export function LoginPage() {
+  const { branding, isSchoolPortal } = useBrand();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('admin');
@@ -455,48 +457,70 @@ export function LoginPage() {
       <div className="w-full max-w-[480px]">
         <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
           
-          {/* School Header */}
+          {/* School Header / GlobePen Platform Header */}
           <div className="flex flex-col items-center mb-8 text-center">
-            <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mb-4 overflow-hidden shadow-inner border border-slate-50 relative group">
-               {settings?.logoBase64 ? (
-                 <img src={settings.logoBase64} alt="Logo" className="w-full h-full object-cover" />
-               ) : (
-                 <span className="text-2xl font-black uppercase text-slate-700 italic">
-                   {settings?.schoolName?.charAt(0) || <Logo size={32} />}
-                 </span>
-               )}
-            </div>
-            
-            <h2 className="text-xl font-black text-slate-800 leading-tight">
-              {settings?.schoolName || 'UpRecord Portal'}
-            </h2>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-              {settings?.schoolSlogan || 'Molding Future Leaders'}
-            </p>
+            {isSchoolPortal ? (
+              <>
+                <div 
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 overflow-hidden shadow-inner border border-slate-100 p-2"
+                  style={{ backgroundColor: `${branding.brandColor}15` }}
+                >
+                  {branding.logoUrl ? (
+                    <img src={branding.logoUrl} alt={branding.schoolName || 'School'} className="w-full h-full object-contain" />
+                  ) : (
+                    <Logo size={36} variant="icon" />
+                  )}
+                </div>
+                
+                <h2 className="text-xl font-black text-slate-800 leading-tight">
+                  {branding.portalTitle || branding.schoolName}
+                </h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                  {branding.schoolName ? `${branding.schoolName} Secure Portal` : 'Official Academic Portal'}
+                </p>
 
-            {/* School Finder / Switch Trigger */}
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  setIsSearchOpen(true);
-                }}
-                className="px-3.5 py-1.5 bg-blue-50/70 text-blue-600 hover:bg-blue-100/80 border border-blue-100/50 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm"
-              >
-                <Search size={11} />
-                Find / Switch School
-              </button>
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100/80 text-[10px] font-semibold text-slate-500">
+                  <span>Powered by</span>
+                  <strong className="text-blue-600 font-bold">GlobePen</strong>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-3">
+                  <Logo size={44} variant="icon" />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 leading-tight tracking-tight">
+                  Globe<span className="text-[var(--brand-primary,#2563EB)]">Pen</span>
+                </h2>
+                <p className="text-xs text-slate-500 font-medium mt-1">
+                  Multi-Tenant School Management Platform
+                </p>
 
-              <button
-                type="button"
-                onClick={() => loginBackupFileInputRef.current?.click()}
-                className="px-3.5 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/60 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
-              >
-                <Upload size={11} />
-                Import Backup
-              </button>
-            </div>
+                {/* School Finder / Switch Trigger on Platform Host */}
+                <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setIsSearchOpen(true);
+                    }}
+                    className="px-3.5 py-1.5 bg-blue-50/70 text-blue-600 hover:bg-blue-100/80 border border-blue-100/50 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm"
+                  >
+                    <Search size={11} />
+                    Find / Switch School
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => loginBackupFileInputRef.current?.click()}
+                    className="px-3.5 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/60 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                  >
+                    <Upload size={11} />
+                    Import Backup
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Role selection tab row */}
@@ -580,6 +604,9 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
+              style={{
+                backgroundColor: isSchoolPortal && branding.brandColor ? branding.brandColor : undefined
+              }}
               className="w-full h-[46px] bg-slate-800 hover:bg-slate-900 text-white text-xs font-black uppercase tracking-wider rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 group disabled:opacity-50 mt-4"
             >
               {isLoading ? (
@@ -596,12 +623,31 @@ export function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-50 flex flex-col items-center gap-3">
-             <div className="flex items-center gap-2 text-xs text-slate-400">
-               <span>New school?</span>
-               <Link to="/register" title="Register School Page Link" className="text-slate-800 font-black hover:underline">Register your school</Link>
-             </div>
-             <p className="text-[10px] text-slate-450 font-semibold italic">Having trouble? Contact support desk</p>
+          {/* Footer Branding & Links */}
+          <div className="mt-8 pt-6 border-t border-slate-50 flex flex-col items-center gap-2.5">
+            {isSchoolPortal ? (
+              <>
+                <div className="text-center text-xs text-slate-500 font-medium">
+                  {branding.contactEmail && (
+                    <p>Support: <a href={`mailto:${branding.contactEmail}`} className="text-blue-600 font-bold hover:underline">{branding.contactEmail}</a></p>
+                  )}
+                  {branding.contactPhone && (
+                    <p className="text-[11px] text-slate-400 mt-0.5">{branding.contactPhone}</p>
+                  )}
+                </div>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                  Secure White-Label Portal &bull; GlobePen
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <span>New school?</span>
+                  <Link to="/register" title="Register School Page Link" className="text-blue-600 font-black hover:underline">Register your school</Link>
+                </div>
+                <p className="text-[10px] text-slate-450 font-semibold italic">GlobePen Platform Administration</p>
+              </>
+            )}
           </div>
         </div>
       </div>
