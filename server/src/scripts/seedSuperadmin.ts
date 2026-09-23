@@ -34,6 +34,7 @@ export async function seedSuperadmin(
         isAdmin: true,
         isSuperAdmin: true,
         status: 'active',
+        tokenVersion: { increment: 1 },
       },
     });
     console.log(`[Seed Superadmin] Updated superadmin account (ID: ${updated.id}, Email: ${updated.email})`);

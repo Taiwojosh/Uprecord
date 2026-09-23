@@ -18,6 +18,9 @@ import { resolveTenantFromHostname } from './middleware/hostnameTenant.js';
 // Load environment variables
 dotenv.config();
 
+import { assertProductionSecrets } from './config/secrets.js';
+assertProductionSecrets();
+
 const app = express();
 const PORT = parseInt(process.env.SERVER_PORT || '3001', 10);
 

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import prisma from '../lib/prisma.js';
 
 export interface JwtPayload {
   userId: number;
@@ -9,6 +10,7 @@ export interface JwtPayload {
   isAdmin: boolean;
   isSuperAdmin?: boolean;
   studentId?: number | null;
+  tokenVersion: number;
 }
 
 // Extend Express Request to carry verified user context
@@ -25,6 +27,10 @@ export const AUTH_COOKIE_NAME = 'uprecord_token';
 
 /**
  * Configure and set the HttpOnly, Secure, SameSite session cookie.
+ * 
+ * SECURITY INVARIANT:
+ * The authentication cookie is strictly HttpOnly (`httpOnly: true`) to prevent
+ * cross-site scripting (XSS) extraction of the session credential.
  */
 export function setAuthCookie(res: Response, token: string): void {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -51,11 +57,22 @@ export function clearAuthCookie(res: Response): void {
 }
 
 /**
- * Middleware: Verify JWT and attach user context to req.user.
- * Checks HttpOnly cookie first, then Authorization Bearer header.
- * Rejects with 401 if the token is missing, malformed, or expired.
+ * Middleware: Verify JWT and attach verified user context to req.user.
+ * 
+ * Enforces:
+ * 1. Valid cryptographic signature and unexpired JWT.
+ * 2. Mandatory `tokenVersion` claim. Legacy tokens without tokenVersion are
+ *    strictly rejected with 401, requiring fresh login.
+ * 3. Database existence and active status. Suspended or deleted users are
+ *    rejected immediately.
+ * 4. Multi-Device Revocation: `tokenVersion` in JWT must match database `tokenVersion`.
+ *    Logging out or resetting password increments the user's `tokenVersion`, instantly
+ *    invalidating all active sessions across all devices.
+ * 5. School Binding Preservation: `decoded.schoolId` must match database `user.schoolId`.
+ *    Old sessions are NEVER silently upgraded to access a newly assigned school;
+ *    school membership mismatches are rejected with 401.
  */
-export function authenticate(req: Request, res: Response, next: NextFunction): void {
+export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   let token: string | undefined;
 
   // 1. Primary web auth: HttpOnly cookie
@@ -72,13 +89,80 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
     return;
   }
 
+  let decoded: JwtPayload;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    req.user = decoded;
-    next();
+    decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
   } catch (err) {
     res.status(401).json({ error: 'Invalid or expired session.' });
     return;
+  }
+
+  // Legacy tokens lacking tokenVersion are strictly rejected
+  if (decoded.tokenVersion === undefined || decoded.tokenVersion === null || typeof decoded.tokenVersion !== 'number') {
+    res.status(401).json({ error: 'Legacy session without token version. Fresh login is required.' });
+    return;
+  }
+
+  // Server-Side Session Validation against live Database
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        schoolId: true,
+        isAdmin: true,
+        isSuperAdmin: true,
+        studentId: true,
+        status: true,
+        tokenVersion: true,
+      },
+    });
+
+    if (!user) {
+      res.status(401).json({ error: 'User session invalid. Account not found.' });
+      return;
+    }
+
+    if (user.status !== 'active') {
+      res.status(401).json({ error: 'Account is inactive or suspended. Access denied.' });
+      return;
+    }
+
+    // Check Multi-Device Revocation
+    if (user.tokenVersion !== decoded.tokenVersion) {
+      res.status(401).json({ error: 'Session has expired or was revoked. Please log in again.' });
+      return;
+    }
+
+    // Preserve School Binding: Reject token / database school mismatches
+    const tokenSchoolId = decoded.schoolId || null;
+    const dbSchoolId = user.schoolId || null;
+
+    if (tokenSchoolId !== dbSchoolId) {
+      res.status(401).json({
+        error: 'Session school membership mismatch. Session was revoked or school membership changed. Fresh login required.',
+      });
+      return;
+    }
+
+    // Attach verified user claims to request
+    req.user = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      schoolId: user.schoolId,
+      isAdmin: user.isAdmin,
+      isSuperAdmin: user.isSuperAdmin,
+      studentId: user.studentId,
+      tokenVersion: user.tokenVersion,
+    };
+
+    next();
+  } catch (dbErr) {
+    console.error('[Authenticate DB Error]', dbErr);
+    res.status(500).json({ error: 'Internal server error validating session.' });
   }
 }
 
@@ -109,4 +193,3 @@ export function signToken(payload: JwtPayload): string {
   const expiresIn = (process.env.JWT_EXPIRES_IN || '7d') as any;
   return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
-

@@ -479,7 +479,8 @@ describe('Security, Multi-Tenancy & RBAC Verification Suite', () => {
     it('Logout clears the HttpOnly auth cookie', async () => {
       const res = await request(app)
         .post('/api/auth/logout')
-        .set('Cookie', [adminAlphaCookie]);
+        .set('Cookie', [adminAlphaCookie, `${CSRF_COOKIE_NAME}=${adminAlphaCsrf}`])
+        .set('X-CSRF-Token', adminAlphaCsrf);
 
       expect(res.status).toBe(200);
       const rawCookies = res.headers['set-cookie'] || [];

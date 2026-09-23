@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { authenticate, requireRole, signToken, setAuthCookie, clearAuthCookie, type JwtPayload } from '../middleware/auth.js';
-import { setCsrfCookie } from '../middleware/csrf.js';
+import { setCsrfCookie, CSRF_COOKIE_NAME } from '../middleware/csrf.js';
+import { adminLoginRateLimiter } from '../middleware/rateLimit.js';
 import prisma from '../lib/prisma.js';
 
 const router = Router();
@@ -19,6 +20,8 @@ const superadminLoginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+const DUMMY_BCRYPT_HASH = '$2a$12$e8h02UoJgqIq71aEaQG1.O2H6R8YkYk7X7X7X7X7X7X7X7X7X7X7X';
+
 /**
  * Platform Superadmin Routes
  * 
@@ -29,8 +32,9 @@ const superadminLoginSchema = z.object({
 
 // ─── POST /api/admin/login ───────────────────────────────────────────
 // Authenticate against database-backed SUPERADMIN account
+// Rate limited by IP and account email
 
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response) => {
   try {
     const parsed = superadminLoginSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -51,6 +55,7 @@ router.post('/login', async (req: Request, res: Response) => {
     });
 
     if (!user || !user.passwordHash) {
+      await bcrypt.compare(password, DUMMY_BCRYPT_HASH);
       res.status(401).json({ error: 'Invalid superadmin credentials.' });
       return;
     }
@@ -73,6 +78,7 @@ router.post('/login', async (req: Request, res: Response) => {
       schoolId: null,
       isAdmin: true,
       isSuperAdmin: true,
+      tokenVersion: user.tokenVersion,
     };
 
     const token = signToken(tokenPayload);
@@ -119,11 +125,26 @@ router.get('/me', authenticate, requireRole('superadmin'), async (req: Request, 
 });
 
 // ─── POST /api/admin/logout ──────────────────────────────────────────
-// Clears session cookie
+// Clears session cookie and revokes session server-side
 
-router.post('/logout', (_req: Request, res: Response) => {
-  clearAuthCookie(res);
-  res.json({ message: 'Superadmin logged out successfully.' });
+router.post('/logout', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (req.user?.userId) {
+      await prisma.user.update({
+        where: { id: req.user.userId },
+        data: { tokenVersion: { increment: 1 } },
+      });
+    }
+
+    clearAuthCookie(res);
+    res.clearCookie(CSRF_COOKIE_NAME, { path: '/' });
+    res.json({ message: 'Superadmin logged out successfully.' });
+  } catch (err) {
+    console.error('[Admin Logout Error]', err);
+    clearAuthCookie(res);
+    res.clearCookie(CSRF_COOKIE_NAME, { path: '/' });
+    res.json({ message: 'Superadmin logged out successfully.' });
+  }
 });
 
 // ─── GET /api/admin/schools ──────────────────────────────────────────

@@ -69,8 +69,12 @@ model User {
   status            String    @default("active") // active | pending_activation | suspended
   joinDate          String?
   studentId         Int?      // Link to Student if role is "student"
-  setupToken        String?   @unique // Cryptographic activation/password setup token
+  tokenVersion      Int       @default(0) // Incremented on logout / password reset / revocation
+  setupToken        String?   @unique // Deprecated: migrated to setupTokenHash; cleared on migration
+  setupTokenHash    String?   @unique // SHA-256 hash of activation token
   setupTokenExpires DateTime?
+  resetTokenHash    String?   @unique // SHA-256 hash of password reset token
+  resetTokenExpires DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 

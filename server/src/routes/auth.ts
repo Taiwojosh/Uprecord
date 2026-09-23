@@ -6,10 +6,72 @@ import prisma from '../lib/prisma.js';
 import { authenticate, signToken, setAuthCookie, clearAuthCookie, type JwtPayload } from '../middleware/auth.js';
 import { enforceTenant } from '../middleware/tenant.js';
 import { requireAdmin } from '../middleware/rbac.js';
-import { setCsrfCookie } from '../middleware/csrf.js';
+import { setCsrfCookie, CSRF_COOKIE_NAME } from '../middleware/csrf.js';
 import { allocateSchoolSlug } from '../scripts/backfillSlugs.js';
+import { loginRateLimiter, forgotPasswordRateLimiter, resetPasswordRateLimiter } from '../middleware/rateLimit.js';
+import { sendSystemEmail } from '../lib/mailSink.js';
 
 const router = Router();
+
+// Comparable bcrypt hash to align computational workload on absent vs present accounts.
+// Note: mitigates coarse timing differences between existing vs non-existent accounts;
+// does not claim to eliminate all timing attacks, as existing hashes may have different work factors or microarchitectural cache timing.
+const DUMMY_BCRYPT_HASH = '$2a$12$e8h02UoJgqIq71aEaQG1.O2H6R8YkYk7X7X7X7X7X7X7X7X7X7X7X';
+
+// Uniform response message for password recovery requests
+const UNIFORM_FORGOT_PASSWORD_RESPONSE = {
+  message: 'If an account is associated with that email, a password reset link has been sent.',
+};
+
+/**
+ * Determine the explicit approved HTTPS recovery origin for link generation.
+ * 
+ * SECURITY INVARIANT:
+ * - Never blindly trust raw client-supplied Host headers.
+ * - DNS ownership verification alone does NOT mean a custom domain is ready to serve
+ *   password-reset pages (e.g. TLS certificates or DNS A/CNAME may not be configured yet).
+ * - Only explicitly approved origins (from APPROVED_RECOVERY_ORIGINS, or the central platform host)
+ *   are ever used for password recovery links.
+ * - School users requesting recovery from the central platform portal receive links on the
+ *   approved platform origin.
+ */
+function getApprovedOrigin(req: Request, school?: { slug?: string; customDomain?: string | null; customDomainVerified?: boolean } | null): string {
+  const isProd = process.env.NODE_ENV === 'production';
+  const configuredClient = process.env.CLIENT_URL;
+
+  const explicitlyApproved = process.env.APPROVED_RECOVERY_ORIGINS
+    ? process.env.APPROVED_RECOVERY_ORIGINS.split(',').map((o) => o.trim())
+    : [];
+
+  // If on a school portal: only use school custom domain if explicitly in APPROVED_RECOVERY_ORIGINS
+  if (req.resolvedSchool) {
+    if (req.resolvedSchool.customDomain && req.resolvedSchool.customDomainVerified) {
+      const customOrigin = `https://${req.resolvedSchool.customDomain}`;
+      if (explicitlyApproved.includes(customOrigin)) {
+        return customOrigin;
+      }
+    }
+    const baseDomain = process.env.PLATFORM_BASE_DOMAINS?.split(',')[0]?.trim();
+    if (baseDomain && req.resolvedSchool.slug) {
+      const subOrigin = `https://${req.resolvedSchool.slug}.${baseDomain}`;
+      if (explicitlyApproved.includes(subOrigin) || !isProd) {
+        return subOrigin;
+      }
+    }
+  }
+
+  // Central platform portal origin (allows school users who log in on platform portal to recover there)
+  if (configuredClient) {
+    return configuredClient;
+  }
+
+  const platformHost = process.env.PLATFORM_HOSTS?.split(',')[0]?.trim();
+  if (platformHost) {
+    return `https://${platformHost}`;
+  }
+
+  return isProd ? 'https://globepen.app' : 'http://localhost:3000';
+}
 
 // ─── Validation Schemas ──────────────────────────────────────────────
 
@@ -38,6 +100,15 @@ const inviteSchema = z.object({
 
 const setupPasswordSchema = z.object({
   token: z.string().min(16, 'Valid activation token is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Valid email is required'),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(16, 'Valid reset token is required'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
@@ -96,6 +167,7 @@ router.post('/register', async (req: Request, res: Response) => {
           isAdmin: true,
           schoolId: school.id,
           status: 'active',
+          tokenVersion: 0,
         },
       });
 
@@ -122,6 +194,7 @@ router.post('/register', async (req: Request, res: Response) => {
       role: result.user.role,
       schoolId: result.school.id,
       isAdmin: true,
+      tokenVersion: result.user.tokenVersion,
     };
 
     const token = signToken(tokenPayload);
@@ -155,8 +228,9 @@ router.post('/register', async (req: Request, res: Response) => {
 
 // ─── POST /api/auth/login ────────────────────────────────────────────
 // Authenticates credentials and issues an HttpOnly cookie session.
+// Rate limited by IP and normalized account email.
 
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', loginRateLimiter, async (req: Request, res: Response) => {
   try {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -174,7 +248,9 @@ router.post('/login', async (req: Request, res: Response) => {
       include: { school: { select: { id: true, name: true } } },
     });
 
+    // If user does not exist, run comparable bcrypt comparison to mitigate timing leaks
     if (!user) {
+      await bcrypt.compare(password, DUMMY_BCRYPT_HASH);
       res.status(401).json({ error: 'Invalid email or password.' });
       return;
     }
@@ -218,6 +294,7 @@ router.post('/login', async (req: Request, res: Response) => {
       isAdmin: user.isAdmin,
       isSuperAdmin: user.isSuperAdmin,
       studentId: user.studentId,
+      tokenVersion: user.tokenVersion,
     };
 
     const token = signToken(tokenPayload);
@@ -245,16 +322,35 @@ router.post('/login', async (req: Request, res: Response) => {
 });
 
 // ─── POST /api/auth/logout ───────────────────────────────────────────
-// Clears the HttpOnly authentication cookie.
+// Server-Side Session Revocation:
+// 1. Authenticates current session (must be valid)
+// 2. Increments `tokenVersion` in database, revoking all active sessions across all devices
+// 3. Clears both HttpOnly session cookie and CSRF cookie
 
-router.post('/logout', (_req: Request, res: Response) => {
-  clearAuthCookie(res);
-  res.json({ message: 'Logged out successfully.' });
+router.post('/logout', authenticate, async (req: Request, res: Response) => {
+  try {
+    // Only increment version for the verified authenticated user (never an unverified token)
+    if (req.user?.userId) {
+      await prisma.user.update({
+        where: { id: req.user.userId },
+        data: { tokenVersion: { increment: 1 } },
+      });
+    }
+
+    clearAuthCookie(res);
+    res.clearCookie(CSRF_COOKIE_NAME, { path: '/' });
+    res.json({ message: 'Logged out successfully.' });
+  } catch (err) {
+    console.error('[Logout Error]', err);
+    // Still clear cookies on client even if DB update errored
+    clearAuthCookie(res);
+    res.clearCookie(CSRF_COOKIE_NAME, { path: '/' });
+    res.json({ message: 'Logged out successfully.' });
+  }
 });
 
 // ─── POST /api/auth/invite ───────────────────────────────────────────
-// Admin creates/invites a user using an activation token flow.
-// No administrator-known passwords!
+// Admin invites user. Generates 32-byte raw token and stores SHA-256 hash.
 
 router.post('/invite', authenticate, enforceTenant, requireAdmin, async (req: Request, res: Response) => {
   try {
@@ -269,9 +365,10 @@ router.post('/invite', authenticate, enforceTenant, requireAdmin, async (req: Re
 
     const { email, fullName, role, department, phone, studentId } = parsed.data;
 
-    // Generate a secure random activation token (valid 48 hours)
+    // Generate secure 32-byte activation token
     const setupToken = crypto.randomBytes(32).toString('hex');
-    const setupTokenExpires = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const setupTokenHash = crypto.createHash('sha256').update(setupToken).digest('hex');
+    const setupTokenExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
 
     const user = await prisma.user.create({
       data: {
@@ -283,14 +380,24 @@ router.post('/invite', authenticate, enforceTenant, requireAdmin, async (req: Re
         studentId: studentId || null,
         schoolId: req.user!.schoolId!,
         status: 'pending_activation',
-        passwordHash: null, // Password will be chosen by the user during setup
-        setupToken,
+        passwordHash: null,
+        setupToken, // Stores plaintext for backwards compatibility until migration script clears it
+        setupTokenHash,
         setupTokenExpires,
       },
     });
 
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
-    const setupUrl = `${clientUrl}/setup-password?token=${setupToken}`;
+    const origin = getApprovedOrigin(req);
+    const setupUrl = `${origin}/setup-password?token=${setupToken}`;
+
+    // Dispatch via outbound mail dispatcher / local development sink
+    await sendSystemEmail({
+      to: user.email,
+      subject: 'Invitation to GlobePen School Portal',
+      template: 'invitation',
+      link: setupUrl,
+      recipientName: fullName,
+    });
 
     res.status(201).json({
       message: 'User invited successfully. Share the activation link with the user to set their password.',
@@ -315,7 +422,7 @@ router.post('/invite', authenticate, enforceTenant, requireAdmin, async (req: Re
 });
 
 // ─── GET /api/auth/verify-setup-token ─────────────────────────────────
-// Verifies if an activation/setup token is valid and returns user info
+// Read-only verification. Must NOT consume token.
 
 router.get('/verify-setup-token', async (req: Request, res: Response) => {
   try {
@@ -325,9 +432,14 @@ router.get('/verify-setup-token', async (req: Request, res: Response) => {
       return;
     }
 
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
     const user = await prisma.user.findFirst({
       where: {
-        setupToken: token,
+        OR: [
+          { setupTokenHash: tokenHash },
+          { setupToken: token },
+        ],
         setupTokenExpires: { gt: new Date() },
       },
       include: { school: { select: { id: true, name: true } } },
@@ -342,6 +454,7 @@ router.get('/verify-setup-token', async (req: Request, res: Response) => {
       res.status(403).json({ error: 'This activation link belongs to a different school portal.' });
       return;
     }
+
     res.json({
       valid: true,
       email: user.email,
@@ -350,13 +463,15 @@ router.get('/verify-setup-token', async (req: Request, res: Response) => {
       schoolName: user.school?.name,
     });
   } catch (err) {
-    console.error('[Verify Token Error]', err);
+    console.error('[Verify Setup Token Error]', err);
     res.status(500).json({ error: 'Failed to verify token.' });
   }
 });
 
 // ─── POST /api/auth/setup-password ───────────────────────────────────
-// User chooses their own password using their valid setup token.
+// Atomic Token Consumption:
+// Conditionally consumes unexpired token and updates password/tokenVersion in ONE transaction.
+// Concurrency safe: concurrent duplicate requests will see count = 0 and fail.
 
 router.post('/setup-password', async (req: Request, res: Response) => {
   try {
@@ -370,47 +485,77 @@ router.post('/setup-password', async (req: Request, res: Response) => {
     }
 
     const { token, password } = parsed.data;
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
-    const user = await prisma.user.findFirst({
+    // Hostname and existence check before consuming
+    const candidate = await prisma.user.findFirst({
       where: {
-        setupToken: token,
+        OR: [
+          { setupTokenHash: tokenHash },
+          { setupToken: token },
+        ],
         setupTokenExpires: { gt: new Date() },
       },
-      include: { school: { select: { id: true, name: true } } },
+      select: { id: true, schoolId: true },
     });
 
-    if (!user) {
-      res.status(400).json({ error: 'Invalid or expired setup token.' });
+    if (!candidate) {
+      res.status(400).json({ error: 'Invalid, expired, or already used setup token.' });
       return;
     }
 
-    // Hostname/Tenant Agreement: User activation must occur on matching school portal
-    if (req.resolvedSchool && user.schoolId !== req.resolvedSchool.id) {
+    if (req.resolvedSchool && candidate.schoolId !== req.resolvedSchool.id) {
       res.status(403).json({ error: 'This activation link belongs to a different school portal.' });
       return;
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const updatedUser = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash,
-        setupToken: null,
-        setupTokenExpires: null,
-        status: 'active',
-      },
-      include: { school: { select: { id: true, name: true } } },
+    // Atomic transaction: conditionally consume unexpired token
+    const result = await prisma.$transaction(async (tx) => {
+      const updateRes = await tx.user.updateMany({
+        where: {
+          id: candidate.id,
+          OR: [
+            { setupTokenHash: tokenHash },
+            { setupToken: token },
+          ],
+          setupTokenExpires: { gt: new Date() },
+        },
+        data: {
+          passwordHash,
+          setupToken: null,
+          setupTokenHash: null,
+          setupTokenExpires: null,
+          status: 'active',
+          tokenVersion: { increment: 1 },
+        },
+      });
+
+      if (updateRes.count !== 1) {
+        return null;
+      }
+
+      return tx.user.findUnique({
+        where: { id: candidate.id },
+        include: { school: { select: { id: true, name: true } } },
+      });
     });
 
+    if (!result) {
+      res.status(400).json({ error: 'Invalid, expired, or already used setup token.' });
+      return;
+    }
+
     const tokenPayload: JwtPayload = {
-      userId: updatedUser.id,
-      email: updatedUser.email,
-      role: updatedUser.role,
-      schoolId: updatedUser.schoolId,
-      isAdmin: updatedUser.isAdmin,
-      isSuperAdmin: updatedUser.isSuperAdmin,
-      studentId: updatedUser.studentId,
+      userId: result.id,
+      email: result.email,
+      role: result.role,
+      schoolId: result.schoolId,
+      isAdmin: result.isAdmin,
+      isSuperAdmin: result.isSuperAdmin,
+      studentId: result.studentId,
+      tokenVersion: result.tokenVersion,
     };
 
     const jwtToken = signToken(tokenPayload);
@@ -421,20 +566,206 @@ router.post('/setup-password', async (req: Request, res: Response) => {
       message: 'Password created successfully. Account is now active.',
       token: jwtToken,
       user: {
-        id: updatedUser.id,
-        email: updatedUser.email,
-        fullName: updatedUser.fullName,
-        role: updatedUser.role,
-        schoolId: updatedUser.schoolId,
-        isAdmin: updatedUser.isAdmin,
-        studentId: updatedUser.studentId,
-        status: updatedUser.status,
+        id: result.id,
+        email: result.email,
+        fullName: result.fullName,
+        role: result.role,
+        schoolId: result.schoolId,
+        isAdmin: result.isAdmin,
+        studentId: result.studentId,
+        status: result.status,
       },
-      school: updatedUser.school,
+      school: result.school,
     });
   } catch (err) {
     console.error('[Setup Password Error]', err);
     res.status(500).json({ error: 'Failed to set password.' });
+  }
+});
+
+// ─── POST /api/auth/forgot-password ──────────────────────────────────
+// Zero-Enumeration Password Recovery Request:
+// Always returns the exact same 200 message across non-existent, wrong-school, and inactive accounts.
+
+router.post('/forgot-password', forgotPasswordRateLimiter, async (req: Request, res: Response) => {
+  try {
+    const parsed = forgotPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: 'Validation failed',
+        details: parsed.error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const { email } = parsed.data;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const user = await prisma.user.findFirst({
+      where: { email: normalizedEmail },
+      include: { school: { select: { id: true, name: true, slug: true, customDomain: true, customDomainVerified: true } } },
+    });
+
+    // Check account validity and tenant match
+    let shouldSendReset = true;
+
+    if (!user || user.status !== 'active') {
+      shouldSendReset = false;
+      await bcrypt.compare('dummy_input', DUMMY_BCRYPT_HASH);
+    } else if (req.resolvedSchool && (user.isSuperAdmin || user.role === 'superadmin' || user.schoolId !== req.resolvedSchool.id)) {
+      // Wrong-school or superadmin on school portal: do NOT send email, do NOT return 403.
+      // Must return identical uniform response.
+      shouldSendReset = false;
+      await bcrypt.compare('dummy_input', DUMMY_BCRYPT_HASH);
+    }
+
+    if (shouldSendReset && user) {
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+      const resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetTokenHash,
+          resetTokenExpires,
+        },
+      });
+
+      const origin = getApprovedOrigin(req, user.school);
+      const resetUrl = `${origin}/reset-password?token=${resetToken}`;
+
+      try {
+        await sendSystemEmail({
+          to: user.email,
+          subject: 'GlobePen Password Reset Request',
+          template: 'password-reset',
+          link: resetUrl,
+          recipientName: user.fullName,
+          schoolName: user.school?.name,
+        });
+      } catch (mailErr) {
+        // Mail failure must NOT crash the server or reveal user existence
+        console.error('[Mail Delivery Failure]', mailErr);
+      }
+    }
+
+    res.json(UNIFORM_FORGOT_PASSWORD_RESPONSE);
+  } catch (err) {
+    console.error('[Forgot Password Error]', err);
+    res.status(500).json({ error: 'Failed to process request.' });
+  }
+});
+
+// ─── GET /api/auth/verify-reset-token ─────────────────────────────────
+// Read-only verification of password reset token. Does NOT consume token.
+
+router.get('/verify-reset-token', async (req: Request, res: Response) => {
+  try {
+    const token = req.query.token as string | undefined;
+    if (!token) {
+      res.status(400).json({ error: 'Token query parameter is required.' });
+      return;
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await prisma.user.findFirst({
+      where: {
+        resetTokenHash: tokenHash,
+        resetTokenExpires: { gt: new Date() },
+      },
+      select: {
+        id: true,
+        email: true,
+        schoolId: true,
+      },
+    });
+
+    if (!user) {
+      res.status(400).json({ error: 'Invalid or expired password reset link.' });
+      return;
+    }
+
+    if (req.resolvedSchool && user.schoolId !== req.resolvedSchool.id) {
+      res.status(403).json({ error: 'This password reset link belongs to a different school portal.' });
+      return;
+    }
+
+    res.json({
+      valid: true,
+      email: user.email,
+    });
+  } catch (err) {
+    console.error('[Verify Reset Token Error]', err);
+    res.status(500).json({ error: 'Failed to verify reset token.' });
+  }
+});
+
+// ─── POST /api/auth/reset-password ───────────────────────────────────
+// Atomic Token Consumption:
+// Consumes reset token and sets new password in ONE transaction.
+// Increments `tokenVersion`, invalidating all existing sessions across all devices.
+
+router.post('/reset-password', resetPasswordRateLimiter, async (req: Request, res: Response) => {
+  try {
+    const parsed = resetPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: 'Validation failed',
+        details: parsed.error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const { token, password } = parsed.data;
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Hostname check before consuming
+    if (req.resolvedSchool) {
+      const candidate = await prisma.user.findFirst({
+        where: { resetTokenHash: tokenHash },
+        select: { schoolId: true },
+      });
+      if (candidate && candidate.schoolId !== req.resolvedSchool.id) {
+        res.status(403).json({ error: 'This password reset link belongs to a different school portal.' });
+        return;
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // Atomic transaction: conditionally consume unexpired reset token
+    const result = await prisma.$transaction(async (tx) => {
+      const updateRes = await tx.user.updateMany({
+        where: {
+          resetTokenHash: tokenHash,
+          resetTokenExpires: { gt: new Date() },
+        },
+        data: {
+          passwordHash,
+          resetTokenHash: null,
+          resetTokenExpires: null,
+          tokenVersion: { increment: 1 }, // Revokes all sessions on all devices
+        },
+      });
+
+      if (updateRes.count !== 1) {
+        return null;
+      }
+
+      return true;
+    });
+
+    if (!result) {
+      res.status(400).json({ error: 'Password reset link is invalid, expired, or has already been used.' });
+      return;
+    }
+
+    res.json({ message: 'Password has been reset successfully. Please log in with your new password.' });
+  } catch (err) {
+    console.error('[Reset Password Error]', err);
+    res.status(500).json({ error: 'Failed to reset password.' });
   }
 });
 
@@ -491,6 +822,7 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
 
 // ─── POST /api/auth/change-password ──────────────────────────────────
 // Allows authenticated users to change their own password.
+// Increments tokenVersion to revoke old sessions across all devices.
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
@@ -526,10 +858,28 @@ router.post('/change-password', authenticate, async (req: Request, res: Response
     }
 
     const newHash = await bcrypt.hash(newPassword, 12);
-    await prisma.user.update({
+    const updated = await prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash: newHash },
+      data: {
+        passwordHash: newHash,
+        tokenVersion: { increment: 1 }, // Revoke old sessions across devices
+      },
     });
+
+    // Re-issue cookie with new tokenVersion for the active session
+    const tokenPayload: JwtPayload = {
+      userId: updated.id,
+      email: updated.email,
+      role: updated.role,
+      schoolId: updated.schoolId,
+      isAdmin: updated.isAdmin,
+      isSuperAdmin: updated.isSuperAdmin,
+      studentId: updated.studentId,
+      tokenVersion: updated.tokenVersion,
+    };
+    const token = signToken(tokenPayload);
+    setAuthCookie(res, token);
+    setCsrfCookie(res);
 
     res.json({ message: 'Password updated successfully.' });
   } catch (err) {

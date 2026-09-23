@@ -15,3 +15,11 @@ prisma/*.db-journal
 *.db-journal
 *.sqlite
 *.sqlite3
+
+# Private runtime and mail captures
+*.dump
+*.tokens
+*captured*emails*
+runtime-mail/
+*.mail.json
+!server/src/lib/mailSink.ts

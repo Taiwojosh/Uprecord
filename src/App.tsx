@@ -12,6 +12,8 @@ import { AttendanceGuard } from './components/AttendanceGuard';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { RegisterPage } from './pages/Auth/RegisterPage';
 import { SetupPasswordPage } from './pages/Auth/SetupPasswordPage';
+import { ForgotPasswordPage } from './pages/Auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/Auth/ResetPasswordPage';
 import { AdminPanelPage } from './pages/AdminPanelPage';
 import { AdminReportsPage } from './pages/AdminReportsPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -115,6 +117,8 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/setup-password" element={<SetupPasswordPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/admin-panel" element={<AdminPanelPage />} />
         <Route path="/admin-reports" element={<AdminReportsPage />} />
 
