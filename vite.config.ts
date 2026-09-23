@@ -10,11 +10,6 @@ export default defineConfig(({mode}) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
-        '@firebase/firestore': path.resolve(__dirname, './node_modules/@firebase/firestore/dist/lite/index.browser.esm.js'),
-        '@babel/runtime/helpers/typeof': path.resolve(__dirname, './src/lib/babelTypeof.ts'),
-        '@babel/runtime/helpers/slicedToArray': path.resolve(__dirname, './src/lib/babelSlicedToArray.ts'),
-        '@babel/runtime/helpers/asyncToGenerator': path.resolve(__dirname, './src/lib/babelAsyncToGenerator.ts'),
-        '@babel/runtime/helpers/defineProperty': path.resolve(__dirname, './src/lib/babelDefineProperty.ts'),
       },
     },
     server: {

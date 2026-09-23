@@ -1,3 +1,4 @@
+import net from 'net';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import crypto from 'crypto';
@@ -7,9 +8,9 @@ import app from '../src/index.js';
 import prisma from '../src/lib/prisma.js';
 import { AUTH_COOKIE_NAME, signToken, type JwtPayload } from '../src/middleware/auth.js';
 import { CSRF_COOKIE_NAME } from '../src/middleware/csrf.js';
-import { resetRateLimitStore } from '../src/middleware/rateLimit.js';
-import { getMailSink, clearMailSink, getLastSentEmail, sendSystemEmail } from '../src/lib/mailSink.js';
-import { migrateInvitationTokens } from '../src/scripts/migrateInvitationTokens.js';
+import { resetRateLimitStore, MemoryStore } from '../src/middleware/rateLimit.js';
+import { getMailSink, clearMailSink, getLastSentEmail, sendSystemEmail, redactTransportError } from '../src/lib/mailSink.js';
+import { migrateInvitationTokens, purgePlaintextInvitationTokens } from '../src/scripts/migrateInvitationTokens.js';
 import { seedSuperadmin } from '../src/scripts/seedSuperadmin.js';
 
 describe('GlobePen Native Authentication Hardening Suite', () => {
@@ -327,7 +328,7 @@ describe('GlobePen Native Authentication Hardening Suite', () => {
   // ─── 4. Plaintext Invitation Token Migration ───────────────────────
 
   describe('4. Plaintext Invitation Token Migration', () => {
-    it('migrates plaintext setupToken to setupTokenHash and clears plaintext column', async () => {
+    it('migrates plaintext setupToken to setupTokenHash while preserving plaintext for dual-read compatibility', async () => {
       const plaintextToken = 'legacy-plain-token-abc-12345';
       const expectedHash = crypto.createHash('sha256').update(plaintextToken).digest('hex');
 
@@ -348,9 +349,9 @@ describe('GlobePen Native Authentication Hardening Suite', () => {
       const { migratedCount } = await migrateInvitationTokens();
       expect(migratedCount).toBeGreaterThanOrEqual(1);
 
-      // Verify in DB: setupToken is null, setupTokenHash has correct SHA-256
+      // Verify in DB: setupToken is PRESERVED for dual-read rollout, setupTokenHash is populated
       const migratedUser = await prisma.user.findUnique({ where: { id: legacyUser.id } });
-      expect(migratedUser?.setupToken).toBeNull();
+      expect(migratedUser?.setupToken).toBe(plaintextToken);
       expect(migratedUser?.setupTokenHash).toBe(expectedHash);
 
       // Verify raw invitation link still functions via GET verify
@@ -359,6 +360,21 @@ describe('GlobePen Native Authentication Hardening Suite', () => {
         .set('Host', 'localhost:3001');
       expect(verifyRes.status).toBe(200);
       expect(verifyRes.body.valid).toBe(true);
+
+      // Post-verification purge: purges plaintext tokens after pilot sign-off
+      const { purgedCount } = await purgePlaintextInvitationTokens();
+      expect(purgedCount).toBeGreaterThanOrEqual(1);
+
+      const purgedUser = await prisma.user.findUnique({ where: { id: legacyUser.id } });
+      expect(purgedUser?.setupToken).toBeNull();
+      expect(purgedUser?.setupTokenHash).toBe(expectedHash);
+
+      // Link still functions via hash lookup!
+      const verifyAfterPurge = await request(app)
+        .get(`/api/auth/verify-setup-token?token=${plaintextToken}`)
+        .set('Host', 'localhost:3001');
+      expect(verifyAfterPurge.status).toBe(200);
+      expect(verifyAfterPurge.body.valid).toBe(true);
     });
   });
 
@@ -404,6 +420,34 @@ describe('GlobePen Native Authentication Hardening Suite', () => {
 
       expect(blocked.status).toBe(429);
       expect(blocked.body.reason).toBe('account_limit_exceeded');
+    });
+
+    it('strictly bounds memory store size and evicts LRU entries under capacity exhaustion', () => {
+      const tinyStore = new MemoryStore(3);
+      const windowMs = 60000;
+
+      tinyStore.increment('key1', windowMs);
+      tinyStore.increment('key2', windowMs);
+      tinyStore.increment('key3', windowMs);
+      expect(tinyStore.getSize()).toBe(3);
+
+      // Access key1 again to refresh its LRU recency
+      tinyStore.increment('key1', windowMs);
+
+      // Insert a 4th key while all 3 previous keys are still unexpired
+      tinyStore.increment('key4', windowMs);
+
+      // Total store size must be strictly capped at maxEntries (3)
+      expect(tinyStore.getSize()).toBe(3);
+
+      // key2 (the least recently used entry) must have been evicted
+      expect(tinyStore.get('key2')).toBeUndefined();
+      // key1, key3, key4 remain tracked
+      expect(tinyStore.get('key1')).toBeDefined();
+      expect(tinyStore.get('key3')).toBeDefined();
+      expect(tinyStore.get('key4')).toBeDefined();
+
+      tinyStore.destroy();
     });
   });
 
@@ -493,10 +537,148 @@ describe('GlobePen Native Authentication Hardening Suite', () => {
             template: 'password-reset',
             link: 'https://globepen.app/reset-password?token=123',
           })
-        ).rejects.toThrow(/Production email provider is not configured/i);
+        ).rejects.toThrow(/Missing required SMTP configuration/i);
       } finally {
         process.env.NODE_ENV = origEnv;
         if (origSmtp) process.env.SMTP_HOST = origSmtp;
+      }
+    });
+
+    it('successfully delivers email via real SMTP transport to local test server', async () => {
+      let receivedEmail = '';
+      const mockSmtpServer = net.createServer((socket) => {
+        socket.setEncoding('utf8');
+        socket.write('220 127.0.0.1 Test SMTP Server\r\n');
+        let inData = false;
+
+        socket.on('data', (chunk: string) => {
+          receivedEmail += chunk;
+          const lines = chunk.split('\r\n');
+          for (const line of lines) {
+            if (!line && !inData) continue;
+            if (inData) {
+              if (line === '.') {
+                inData = false;
+                socket.write('250 2.0.0 Message queued for delivery\r\n');
+              }
+              continue;
+            }
+
+            const cmd = line.trim().toUpperCase();
+            if (cmd.startsWith('EHLO') || cmd.startsWith('HELO')) {
+              socket.write('250-127.0.0.1\r\n250-AUTH LOGIN PLAIN\r\n250 8BITMIME\r\n');
+            } else if (cmd.startsWith('AUTH LOGIN') || cmd.startsWith('AUTH PLAIN')) {
+              socket.write('235 2.7.0 Authentication successful\r\n');
+            } else if (cmd.startsWith('MAIL FROM:')) {
+              socket.write('250 2.1.0 Sender OK\r\n');
+            } else if (cmd.startsWith('RCPT TO:')) {
+              socket.write('250 2.1.5 Recipient OK\r\n');
+            } else if (cmd.startsWith('DATA')) {
+              inData = true;
+              socket.write('354 Start mail input; end with <CRLF>.<CRLF>\r\n');
+            } else if (cmd.startsWith('QUIT')) {
+              socket.write('221 2.0.0 Closing channel\r\n');
+              socket.end();
+            } else if (cmd.length > 0) {
+              socket.write('235 2.7.0 Authentication successful\r\n');
+            }
+          }
+        });
+      });
+
+      const port = await new Promise<number>((resolve) => {
+        mockSmtpServer.listen(0, '127.0.0.1', () => {
+          const addr = mockSmtpServer.address() as net.AddressInfo;
+          resolve(addr.port);
+        });
+      });
+
+      const origEnv = { ...process.env };
+      try {
+        process.env.NODE_ENV = 'production';
+        process.env.SMTP_HOST = '127.0.0.1';
+        process.env.SMTP_PORT = String(port);
+        process.env.SMTP_USER = 'test-smtp-user';
+        process.env.SMTP_PASS = 'test-smtp-password';
+        process.env.SMTP_SECURE = 'false';
+
+        await sendSystemEmail({
+          to: 'local.recipient@school.edu',
+          subject: 'Local SMTP Delivery Test',
+          template: 'password-reset',
+          link: 'http://localhost:3000/reset-password?token=abcdef1234567890abcdef1234567890',
+        });
+
+        expect(receivedEmail).toContain('local.recipient@school.edu');
+        expect(receivedEmail).toContain('Local SMTP Delivery Test');
+      } finally {
+        process.env = origEnv;
+        await new Promise<void>((resolve) => mockSmtpServer.close(() => resolve()));
+      }
+    });
+
+    it('redacts transport errors and maintains generic 200 response when SMTP transport fails', async () => {
+      // 1. Redaction unit check
+      const rawError = new Error('SMTP connection failed at user: secret-pass-123 with token=abcdef0123456789abcdef0123456789');
+      const redacted = redactTransportError(rawError);
+      expect(redacted).not.toContain('secret-pass-123');
+      expect(redacted).not.toContain('abcdef0123456789abcdef0123456789');
+      expect(redacted).toContain('[REDACTED]');
+
+      // 2. Mock failing SMTP server (returns 535 authentication error)
+      const failingSmtpServer = net.createServer((socket) => {
+        socket.setEncoding('utf8');
+        socket.write('220 127.0.0.1 Failing SMTP Server\r\n');
+        socket.on('data', (chunk: string) => {
+          const line = chunk.trim().toUpperCase();
+          if (line.startsWith('EHLO') || line.startsWith('HELO')) {
+            socket.write('250-127.0.0.1\r\n250-AUTH LOGIN PLAIN\r\n250 8BITMIME\r\n');
+          } else if (line.startsWith('AUTH LOGIN') || line.startsWith('AUTH PLAIN')) {
+            socket.write('535 5.7.8 Authentication credentials invalid password=super-secret-password-xyz\r\n');
+          } else {
+            socket.write('535 5.7.8 Authentication credentials invalid password=super-secret-password-xyz\r\n');
+          }
+        });
+      });
+
+      const port = await new Promise<number>((resolve) => {
+        failingSmtpServer.listen(0, '127.0.0.1', () => {
+          const addr = failingSmtpServer.address() as net.AddressInfo;
+          resolve(addr.port);
+        });
+      });
+
+      const origEnv = { ...process.env };
+      try {
+        process.env.NODE_ENV = 'production';
+        process.env.PLATFORM_HOSTS = 'localhost:3001,localhost';
+        process.env.SMTP_HOST = '127.0.0.1';
+        process.env.SMTP_PORT = String(port);
+        process.env.SMTP_USER = 'fail-user';
+        process.env.SMTP_PASS = 'super-secret-password-xyz';
+        process.env.SMTP_SECURE = 'false';
+
+        // Direct transport invocation throws redacted error
+        await expect(
+          sendSystemEmail({
+            to: 'admin@alphahardened.edu',
+            subject: 'Delivery Failure Test',
+            template: 'password-reset',
+            link: 'http://localhost:3000/reset-password?token=test',
+          })
+        ).rejects.toThrow(/SMTP Delivery Failure/i);
+
+        // Endpoint invocation catches delivery failure and retains generic 200 response
+        const res = await request(app)
+          .post('/api/auth/forgot-password')
+          .set('Host', 'localhost:3001')
+          .send({ email: 'admin@alphahardened.edu' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.message).toMatch(/If an account is associated with that email/i);
+      } finally {
+        process.env = origEnv;
+        await new Promise<void>((resolve) => failingSmtpServer.close(() => resolve()));
       }
     });
   });

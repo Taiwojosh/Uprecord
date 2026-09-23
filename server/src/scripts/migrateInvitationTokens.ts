@@ -2,20 +2,27 @@ import crypto from 'crypto';
 import prisma from '../lib/prisma.js';
 
 /**
- * Migration Script: Migrate Plaintext Invitation Tokens to SHA-256 Hashes
+ * Migration Script: Dual-State Invitation Token Hash Backfill
  * 
+ * BACKWARD COMPATIBILITY GUARANTEE:
  * Inspects all User records with active plaintext `setupToken` values,
- * computes their SHA-256 hash, stores it in `setupTokenHash`, and clears
- * the plaintext `setupToken`.
+ * computes their SHA-256 hash, and populates `setupTokenHash`.
  * 
- * Existing valid invitation links containing the raw token continue to work,
- * as the verification handler hashes the incoming raw token and matches against
- * `setupTokenHash`. Plaintext tokens are completely erased from the database.
+ * CRITICAL MIGRATION SAFETY RULE:
+ * The legacy plaintext `setupToken` column is NOT cleared during initial backfill!
+ * This ensures that if older application nodes are still running or if an immediate
+ * rollback is required, existing invitations continue to function without interruption.
+ * 
+ * A secondary cleanup function (`purgePlaintextInvitationTokens`) is provided to
+ * erase plaintext tokens only after the hardened deployment is fully verified and signed off.
  */
+
 export async function migrateInvitationTokens(): Promise<{ migratedCount: number }> {
-  const usersWithPlaintext = await prisma.user.findMany({
+  // Find users who have a plaintext setupToken but have not yet had setupTokenHash populated
+  const usersToMigrate = await prisma.user.findMany({
     where: {
       setupToken: { not: null },
+      setupTokenHash: null,
     },
     select: {
       id: true,
@@ -25,7 +32,7 @@ export async function migrateInvitationTokens(): Promise<{ migratedCount: number
 
   let migratedCount = 0;
 
-  for (const user of usersWithPlaintext) {
+  for (const user of usersToMigrate) {
     if (!user.setupToken) continue;
 
     const hash = crypto.createHash('sha256').update(user.setupToken).digest('hex');
@@ -34,22 +41,44 @@ export async function migrateInvitationTokens(): Promise<{ migratedCount: number
       where: { id: user.id },
       data: {
         setupTokenHash: hash,
-        setupToken: null,
+        // DO NOT nullify setupToken here: old code still needs it during rollout
       },
     });
 
     migratedCount++;
   }
 
-  console.log(`[Token Migration Complete] Migrated ${migratedCount} invitation token(s) to SHA-256 hashes and cleared plaintext.`);
+  console.log(`[Token Backfill Complete] Populated setupTokenHash for ${migratedCount} user(s). Plaintext preserved for dual-read compatibility.`);
   return { migratedCount };
 }
 
-// Direct execution
+/**
+ * Post-Verification Cleanup (Run only after pilot deployment is verified and traffic reopened)
+ */
+export async function purgePlaintextInvitationTokens(): Promise<{ purgedCount: number }> {
+  const result = await prisma.user.updateMany({
+    where: {
+      setupToken: { not: null },
+      setupTokenHash: { not: null },
+    },
+    data: {
+      setupToken: null,
+    },
+  });
+
+  console.log(`[Plaintext Cleanup Complete] Erased plaintext setupToken for ${result.count} user(s).`);
+  return { purgedCount: result.count };
+}
+
+// CLI execution
 if (process.argv[1]?.endsWith('migrateInvitationTokens.ts') || process.argv[1]?.endsWith('migrateInvitationTokens.js')) {
-  migrateInvitationTokens()
+  const shouldPurge = process.argv.includes('--purge-plaintext');
+
+  const action = shouldPurge ? purgePlaintextInvitationTokens() : migrateInvitationTokens();
+
+  action
     .catch((err) => {
-      console.error('[Token Migration Error]', err);
+      console.error('[Token Backfill Error]', err);
       process.exit(1);
     })
     .finally(() => prisma.$disconnect());

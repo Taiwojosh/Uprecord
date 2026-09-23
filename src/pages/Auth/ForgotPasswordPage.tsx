@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useBrand } from '../../context/BrandContext';
@@ -11,9 +11,17 @@ export function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailEnabled, setEmailEnabled] = useState<boolean | null>(null);
+  useEffect(() => {
+    api.get('/auth/capabilities').then(({ data }) => setEmailEnabled(data.emailEnabled === true)).catch(() => {
+      setEmailEnabled(false);
+      setError('Unable to check email availability. Please contact the administrator.');
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!emailEnabled) return;
     if (!email.trim()) {
       setError('Please provide your registered email address.');
       return;
@@ -84,7 +92,12 @@ export function ForgotPasswordPage() {
             </div>
           )}
 
-          {isSubmitted ? (
+          {emailEnabled === null ? <p role="status">Checking email availability…</p> : !emailEnabled ? (
+            <div className="space-y-4 text-center">
+              <p>Email recovery is not enabled for this demo. Please contact the administrator.</p>
+              <Link to="/login" className="underline">Return to Sign In</Link>
+            </div>
+          ) : isSubmitted ? (
             <div className="space-y-6 text-center animate-fade-in">
               <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto border border-emerald-100">
                 <CheckCircle2 size={28} />

@@ -9,9 +9,22 @@ import { requireAdmin } from '../middleware/rbac.js';
 import { setCsrfCookie, CSRF_COOKIE_NAME } from '../middleware/csrf.js';
 import { allocateSchoolSlug } from '../scripts/backfillSlugs.js';
 import { loginRateLimiter, forgotPasswordRateLimiter, resetPasswordRateLimiter } from '../middleware/rateLimit.js';
-import { sendSystemEmail } from '../lib/mailSink.js';
+import { sendSystemEmail, redactTransportError } from '../lib/mailSink.js';
 
 const router = Router();
+
+router.get('/capabilities', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ emailEnabled: process.env.EMAIL_DELIVERY_MODE !== 'disabled' });
+});
+
+router.use((req, res, next) => {
+  if (process.env.EMAIL_DELIVERY_MODE === 'disabled' && req.method === 'POST' && ['/forgot-password', '/invite'].includes(req.path)) {
+    res.status(503).json({ error: 'Email invitations and password recovery are not enabled for this demo. Please contact the administrator.' });
+    return;
+  }
+  next();
+});
 
 // Comparable bcrypt hash to align computational workload on absent vs present accounts.
 // Note: mitigates coarse timing differences between existing vs non-existent accounts;
@@ -70,7 +83,8 @@ function getApprovedOrigin(req: Request, school?: { slug?: string; customDomain?
     return `https://${platformHost}`;
   }
 
-  return isProd ? 'https://globepen.app' : 'http://localhost:3000';
+  if (isProd) throw new Error('A recovery origin must be configured.');
+  return 'http://localhost:3000';
 }
 
 // ─── Validation Schemas ──────────────────────────────────────────────
@@ -646,7 +660,7 @@ router.post('/forgot-password', forgotPasswordRateLimiter, async (req: Request, 
         });
       } catch (mailErr) {
         // Mail failure must NOT crash the server or reveal user existence
-        console.error('[Mail Delivery Failure]', mailErr);
+        console.error('[Mail Delivery Failure]', redactTransportError(mailErr));
       }
     }
 

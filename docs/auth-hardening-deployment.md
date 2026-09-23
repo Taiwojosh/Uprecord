@@ -1,136 +1,144 @@
-# GlobePen Native Authentication Hardening: Deployment, Migration & Rollback Guide
+# GlobePen Native Authentication Hardening: Deployment, Maintenance & Rollback Guide
 
-This guide details the deployment sequence, schema migrations, token backfill procedures, security configurations, and rollback plans for the GlobePen Phase 2 native authentication hardening.
-
----
-
-## 1. Overview of Changes
-
-The native authentication system was hardened with zero external vendor dependencies (SuperTokens deferred):
-1. **Server-Side Session Validation & Revocation**:
-   - `tokenVersion` (integer, default 0) stored per user in the database and embedded in signed JWTs.
-   - Any password change, password reset, or `/logout` increments `tokenVersion`, invalidating active sessions across all devices immediately.
-   - Suspended accounts (`status: 'suspended'`) and school membership mismatches return `HTTP 401` on subsequent requests.
-   - Legacy tokens lacking `tokenVersion` are rejected with `HTTP 401`.
-2. **Double-Submit CSRF Hardening**:
-   - Strict CSRF protection enforced whenever an ambient authentication cookie is present, even if a `Bearer` header is passed.
-   - `/logout` requires CSRF validation because it performs stateful session revocation.
-   - Exact route matching prevents path traversal/near-miss bypasses.
-   - Constant-time verification using `crypto.timingSafeEqual`.
-3. **Password Recovery & Activation Hardening**:
-   - Storage of invitation tokens and password reset tokens as SHA-256 hashes (`setupTokenHash`, `resetTokenHash`). Plaintext tokens are never stored in the database.
-   - Atomic consumption via Prisma transactions and conditional queries (`updateMany`) preventing race conditions / simultaneous token reuse.
-   - Read-only token verification endpoints (`GET /verify-setup-token`, `GET /verify-reset-token`) for safe UI pre-flight checks.
-   - Recovery links constructed strictly from configured `APPROVED_RECOVERY_ORIGINS`.
-   - Dual sliding-window rate limiting (IP: 50 requests/15m, Normalized Email: 5 requests/15m) with automatic bounded memory eviction.
-   - Uniform `HTTP 200` anti-enumeration responses for password recovery regardless of user existence, school matching, or delivery outcomes.
-   - Non-fatal email dispatch failure handling: delivery failures are logged internally but do not crash the process or alter the response status.
+This guide details the maintenance window procedure, additive schema migration, token backfill, forced re-login semantics, rollback handling, and configuration for GlobePen Phase 2 native authentication hardening.
 
 ---
 
-## 2. Additive Schema Migration
+## 1. Executive Summary & Security Objectives
 
-The migration is non-destructive and backward compatible with existing user records.
+This release hardens GlobePen's native authentication without external dependencies (SuperTokens deferred):
+- **Server-Side Session Revocation**: Every user has a database-backed `tokenVersion`. Logout, password changes, or account suspensions immediately revoke active sessions across all devices.
+- **Double-Submit CSRF**: Enforced on all cookie-authenticated state-modifying requests; Bearer tokens cannot bypass CSRF when session cookies are ambient.
+- **Token Hashing & Atomic Consumption**: Password setup and reset tokens are hashed with SHA-256 and conditionally consumed in single-statement transactions to prevent race conditions and concurrent reuse.
+- **Strict Rate-Limiting**: Enforces IP and account sliding-window limits with a hard memory cap and LRU eviction.
+- **Real SMTP Transport**: Outbound recovery emails use validated SMTP transports in production with full error redaction. In development/testing, an in-memory ring buffer captures messages without logging tokens to console.
 
-**Migration File**: `prisma/migrations/20260923000000_auth_hardening/migration.sql`
+---
 
-```sql
--- AlterTable: Add tokenVersion with default 0
-ALTER TABLE "User" ADD COLUMN "tokenVersion" INTEGER NOT NULL DEFAULT 0;
+## 2. Maintenance Window Deployment Procedure
 
--- AlterTable: Add hashed setup token column and reset token columns
-ALTER TABLE "User" ADD COLUMN "setupTokenHash" TEXT;
-ALTER TABLE "User" ADD COLUMN "resetTokenHash" TEXT;
-ALTER TABLE "User" ADD COLUMN "resetTokenExpires" DATETIME;
+For this pilot release, use a scheduled maintenance window to ensure data consistency during token migration and session rotation:
 
--- CreateIndex
-CREATE UNIQUE INDEX IF NOT EXISTS "User_setupTokenHash_key" ON "User"("setupTokenHash");
-CREATE UNIQUE INDEX IF NOT EXISTS "User_resetTokenHash_key" ON "User"("resetTokenHash");
+```
+[1. Stop Auth Writes] ──> [2. DB Backup] ──> [3. Schema Migration] ──> [4. Token Backfill]
+                                                                              │
+[8. Reopen Traffic]  <── [7. Verify]   <── [6. Restart Nodes]   <── [5. Deploy Code & Build]
 ```
 
----
+### Step 1: Temporarily Gate Authentication Writes
+To prevent in-flight invitation acceptance or password modifications during schema alterations, gate write endpoints at your reverse proxy (e.g. Nginx or Cloudflare) returning `HTTP 503 Service Unavailable`:
+- `POST /api/auth/register`
+- `POST /api/auth/invite`
+- `POST /api/auth/setup-password`
+- `POST /api/auth/reset-password`
 
-## 3. Pre-Deployment Environment Configuration
+*(Read-only requests, attendance queries, and static asset delivery can remain online).*
 
-Ensure the following environment variables are set in production:
+### Step 2: Full Database Backup
+Create a point-in-time snapshot before running migrations:
+```bash
+# SQLite snapshot:
+sqlite3 prisma/dev.db ".backup 'prisma/backup-pre-auth-hardening.db'"
 
-| Variable | Requirement | Description |
-|---|---|---|
-| `JWT_SECRET` | Mandatory (>= 32 chars) | Cryptographically secure random string. Weak/default values abort startup. |
-| `APPROVED_RECOVERY_ORIGINS` | Mandatory | Comma-separated list of approved HTTPS origins (e.g. `https://portal.globepen.com,https://app.school.edu`). Prevents host header poisoning in password reset emails. |
-| `SMTP_HOST` | Mandatory in Production | SMTP server hostname. Verified at startup via `assertProductionSecrets()`. |
-| `SMTP_PORT` | Optional (default 587) | SMTP port. |
-| `SMTP_USER` | Mandatory in Production | SMTP authentication username. |
-| `SMTP_PASS` | Mandatory in Production | SMTP authentication password. |
-| `SMTP_FROM` | Optional | Sender address (e.g. `GlobePen Security <noreply@globepen.com>`). |
-| `TRUSTED_PROXIES` | Deployment-specific | IP addresses or subnet of trusted reverse proxies. |
+# PostgreSQL snapshot (if applicable):
+# pg_dump -U globepen globepen_prod > backup-pre-auth-hardening.sql
+```
 
----
-
-## 4. Deployment Ordering
-
-Deployments must follow this exact four-stage sequence to guarantee zero downtime and uninterrupted user sessions:
-
-### Step 1: Run Database Migration
-Apply the additive schema migration before updating application code. Existing application nodes will continue operating normally as the new columns are optional with safe defaults.
+### Step 3: Run Additive Schema Migration
+Apply the additive database migration:
 ```bash
 npx prisma migrate deploy
 ```
+*Note: This migration is 100% additive (`tokenVersion`, `setupTokenHash`, `resetTokenHash`, `resetTokenExpires`). Existing tables and columns are preserved.*
 
-### Step 2: Run Invitation Token Backfill Script
-Migrate legacy plaintext `setupToken` values into SHA-256 `setupTokenHash` and clear the legacy plaintext column.
+### Step 4: Run Dual-State Token Backfill Script
+Populate `setupTokenHash` for existing invitation tokens:
 ```bash
-# Compiled JavaScript execution in production:
-node dist/server/src/scripts/migrateInvitationTokens.js
-
-# Or in TypeScript runtime environments:
 npx tsx server/src/scripts/migrateInvitationTokens.ts
 ```
-The backfill script is idempotent: running it multiple times processes only users where `setupToken IS NOT NULL` and `setupTokenHash IS NULL`.
 
-### Step 3: Deploy Application Code & Build
-Deploy the updated backend services and built frontend bundle (`dist/`).
+> [!IMPORTANT]
+> **Dual-Read Backward Compatibility**:
+> The backfill script intentionally does **NOT** nullify plaintext `setupToken` values during this step. This ensures that if any older server worker processes are still serving requests, existing invitation links continue working without interruption.
+
+### Step 5: Deploy Application Code & Build Bundle
+Deploy the updated server code and compile the production frontend:
 ```bash
 npm run build
 ```
 
-### Step 4: Graceful Process Restart
-Restart application worker processes. On startup, `assertProductionSecrets()` validates `JWT_SECRET` strength and SMTP configuration.
+### Step 6: Restart Server Workers
+Restart application processes:
 ```bash
 pm2 restart globepen-api
 # or systemctl restart globepen
 ```
+On startup, `assertProductionSecrets()` verifies that `JWT_SECRET` meets entropy requirements (>= 32 chars) and validates `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS`.
+
+### Step 7: Post-Deployment Smoke Verification
+- Verify `/api/health` returns `200 { status: 'ok' }`.
+- Verify an invitation lookup via `GET /api/auth/verify-setup-token?token=<token>`.
+- Verify password recovery dispatch via `POST /api/auth/forgot-password`.
+
+### Step 8: Reopen Authentication Writes
+Remove the reverse proxy 503 maintenance gate and resume normal operations.
+
+### Step 9: Post-Pilot Plaintext Cleanup (Optional)
+After the pilot deployment has operated successfully and older code has been retired, purge legacy plaintext tokens:
+```bash
+npx tsx server/src/scripts/migrateInvitationTokens.ts --purge-plaintext
+```
 
 ---
 
-## 5. Rollback Procedure
+## 3. Session Rotation & Forced Re-Login Semantics
 
-If a rollback of application code is required:
-
-### Code Rollback
-1. Re-deploy the previous release bundle or git revision.
-2. Restart the application workers:
-   ```bash
-   pm2 restart globepen-api
-   ```
-
-### Schema Considerations
-- **Do not drop columns immediately**: The added columns (`tokenVersion`, `setupTokenHash`, `resetTokenHash`, `resetTokenExpires`) are completely additive and will not interfere with older code versions.
-- If pending invitation links were created during the deployment window, users who received them will use the new hash format. Keeping the columns intact ensures no invitation state is lost if the rollout is resumed.
-- If full database schema rollback is required:
-  ```bash
-  -- Only execute if fully abandoning the release:
-  -- SQLite does not drop columns directly without table recreation; Prisma handles this via migration down scripts if configured.
-  ```
+### Why Existing Sessions Are Invalidated
+All JWTs issued by the hardened server include the user's current `tokenVersion`.
+- Legacy tokens issued prior to this deployment **omit** the `tokenVersion` claim.
+- The hardened authentication middleware explicitly rejects tokens lacking `tokenVersion` with `HTTP 401 Unauthorized` (`Legacy session without token version`).
+- **User Impact**: All logged-in staff and admins must perform a single fresh login to receive a versioned JWT cookie. Unsaved work in browser tabs will prompt for re-authentication.
 
 ---
 
-## 6. Multi-Device Revocation Semantics
+## 4. Rollback Plan & Failure Recovery
 
-- **Login**: Issues a JWT containing `tokenVersion: <current DB value>`.
-- **Logout (`POST /api/auth/logout`)**:
-  - Increments `tokenVersion` in the database.
-  - Clears `auth_token` and `csrf_token` cookies.
-  - Revokes all existing JWTs across all active browsers and mobile devices for that account.
-- **Password Reset / Change**: Increments `tokenVersion` atomically alongside the password update, ensuring compromised or stolen tokens cannot be used after credentials are reset.
-- **Account Suspension**: Changing user status to `suspended` takes effect immediately on the user's next authenticated request, returning `HTTP 401`.
+If critical issues occur post-deployment, follow these rollback instructions:
+
+### 1. Code Reversion
+Re-deploy the previous application bundle or git commit and restart processes:
+```bash
+git checkout <previous-stable-commit>
+npm run build
+pm2 restart globepen-api
+```
+
+### 2. Database Schema Compatibility
+- The schema changes (`tokenVersion`, `setupTokenHash`, etc.) are additive and optional with default values.
+- **Do not drop columns**: The previous code version ignores these new columns. Keeping them prevents data loss if you re-attempt deployment.
+
+### 3. Invitation Token Rollback Behavior
+- Because the backfill script preserved plaintext `setupToken` values, legacy invitation links generated before the rollout continue to work with older code.
+- **Invitations generated during the window**: Any staff invitation generated during the deployment window will have stored `setupTokenHash`. If rolling back, re-issue any invitations that were generated while the new code was live.
+
+### 4. Session Revocation Rollback Limitations
+- Older code does not validate `tokenVersion` against the database; it validates JWT signatures and expiration timestamps only.
+- Consequently, if a user logged out or changed their password under the new code, their old JWT could technically be considered valid by older code until its natural expiration (e.g. 7 days).
+- **Emergency Mitigation**: If an emergency security rollback requires guaranteeing that all sessions across the platform are invalidated, rotate `JWT_SECRET` in `.env` before restarting older code.
+
+---
+
+## 5. Production Environment Variables Reference
+
+| Variable | Required? | Example / Default | Description |
+|---|---|---|---|
+| `JWT_SECRET` | **Yes** | `d4f8...` (>= 32 chars) | Cryptographically secure secret key. Insecure placeholders will fail startup. |
+| `APPROVED_RECOVERY_ORIGINS` | **Yes** | `https://portal.globepen.com,https://app.school.edu` | Approved HTTPS origins for password reset URLs. |
+| `SMTP_HOST` | **Yes** (Prod) | `smtp.postmarkapp.com` | Outbound mail server hostname. |
+| `SMTP_PORT` | Optional | `587` | Outbound mail server port (default 587; 465 for SSL). |
+| `SMTP_USER` | **Yes** (Prod) | `api-key-user` | SMTP authentication username. |
+| `SMTP_PASS` | **Yes** (Prod) | `secret-smtp-password` | SMTP authentication password. |
+| `SMTP_FROM` | Optional | `GlobePen Security <noreply@globepen.com>` | Email From address. |
+| `SMTP_SECURE` | Optional | `false` | Force TLS/SSL connection (auto-detected if port is 465). |
+| `USE_REAL_MAIL_TRANSPORT` | Optional | `false` | Set `true` to force real SMTP in non-production environments. |
+| `TRUSTED_PROXIES` | Deployment | `10.0.0.0/8` | IP address or subnet of reverse proxy. |

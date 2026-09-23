@@ -50,9 +50,9 @@ export function validateProductionSecrets(env: NodeJS.ProcessEnv = process.env):
       errors.push('Either PLATFORM_HOSTS or PLATFORM_BASE_DOMAINS must be configured in production.');
     }
 
-    const hasSmtp = Boolean(env.SMTP_HOST && env.SMTP_USER);
-    if (!hasSmtp) {
-      errors.push('Production email transport (SMTP_HOST and SMTP_USER) must be configured in production.');
+    const hasSmtp = Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+    if (!hasSmtp && env.EMAIL_DELIVERY_MODE !== 'disabled') {
+      errors.push('Production email transport (SMTP_HOST, SMTP_USER, and SMTP_PASS) must be configured in production.');
     }
   }
 

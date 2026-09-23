@@ -1,36 +1,38 @@
 import { Request, Response, NextFunction } from 'express';
 
 /**
- * In-Memory Sliding Window Rate Limiter
+ * In-Memory Rate Limiter with Strict Capacity Cap & LRU Eviction
  * 
- * PILOT ARCHITECTURE SPECIFICATION:
- * This rate limiter stores attempt windows in memory and is designed specifically
- * for the single-instance GlobePen school pilot deployment.
+ * ALGORITHM: Per-Key Fixed Window Counter
+ * - On the first request for a given key (IP address or normalized account email),
+ *   a window is initialized with count = 1 and resetTime = now + windowMs.
+ * - Subsequent requests within [now, resetTime] increment count and update recency.
+ * - When now >= resetTime, the window expires and a new window begins.
  * 
- * NOTE:
- * - State resets whenever the Node.js server process restarts.
- * - For multi-instance clustered or serverless production scaling, this should be
- *   backed by a shared distributed store (such as Redis or Memcached).
- * - Memory is strictly bounded: entries expire after their window and stale keys
- *   are periodically pruned to prevent memory leaks.
+ * CAPACITY EXHAUSTION & MEMORY BOUNDING:
+ * - Pruning expired entries periodically (every 60s) removes stale keys.
+ * - When all entries are concurrently active and the store reaches maxEntries:
+ *   1. It runs an immediate prune() pass.
+ *   2. If the store remains at or above maxEntries (i.e. every entry is unexpired),
+ *      it evicts the Least Recently Used (LRU) entry via Map key iteration order.
+ *   3. This guarantees that memory usage is strictly bounded and will NEVER exceed
+ *      maxEntries, preventing memory exhaustion under DoS attacks with randomized keys.
+ * 
+ * DEPLOYMENT SCOPE:
+ * - Designed specifically for single-node deployments and school pilot instances.
+ * - State resets on server restart. For distributed multi-node production clusters,
+ *   replace this with a Redis/Memcached cluster.
  */
 
-interface RateLimitRecord {
+export interface RateLimitRecord {
   count: number;
   resetTime: number;
 }
 
-interface LimiterOptions {
-  windowMs: number;
-  max: number;
-  keyGenerator: (req: Request) => string | null;
-  message: string;
-}
-
-class MemoryStore {
+export class MemoryStore {
   private hits = new Map<string, RateLimitRecord>();
   private sweepTimer: NodeJS.Timeout | null = null;
-  private readonly maxEntries: number;
+  public readonly maxEntries: number;
 
   constructor(maxEntries = 10000) {
     this.maxEntries = maxEntries;
@@ -47,12 +49,21 @@ class MemoryStore {
 
     if (existing && existing.resetTime > now) {
       existing.count += 1;
+      // Refresh recency for LRU ordering
+      this.hits.delete(key);
+      this.hits.set(key, existing);
       return { count: existing.count, resetTime: existing.resetTime };
     }
 
-    // Safety guard against unbounded memory growth
+    // Safety guard against unbounded memory growth under DoS
     if (this.hits.size >= this.maxEntries) {
       this.prune();
+      // If store is still at or above capacity (all entries active), evict LRU entry
+      while (this.hits.size >= this.maxEntries) {
+        const oldestKey = this.hits.keys().next().value;
+        if (!oldestKey) break;
+        this.hits.delete(oldestKey);
+      }
     }
 
     const resetTime = now + windowMs;
@@ -69,6 +80,9 @@ class MemoryStore {
       this.hits.delete(key);
       return undefined;
     }
+    // Refresh recency
+    this.hits.delete(key);
+    this.hits.set(key, record);
     return record;
   }
 
@@ -80,7 +94,11 @@ class MemoryStore {
     this.hits.clear();
   }
 
-  private prune(): void {
+  getSize(): number {
+    return this.hits.size;
+  }
+
+  prune(): void {
     const now = Date.now();
     for (const [key, record] of this.hits.entries()) {
       if (record.resetTime <= now) {
@@ -98,7 +116,7 @@ class MemoryStore {
   }
 }
 
-const sharedStore = new MemoryStore(10000);
+export const sharedStore = new MemoryStore(10000);
 
 export function resetRateLimitStore(): void {
   sharedStore.clear();
@@ -108,7 +126,6 @@ export function resetRateLimitStore(): void {
  * Extract client IP accounting for configured proxies.
  */
 export function getClientIp(req: Request): string {
-  // If trust proxy is configured, req.ip is populated by Express
   return req.ip || req.socket.remoteAddress || '127.0.0.1';
 }
 
@@ -136,6 +153,7 @@ export function createDualRateLimiter(options: {
   accountMax: number;
   accountKeyExtractor?: (req: Request) => string | null;
   message?: string;
+  store?: MemoryStore;
 }) {
   const {
     windowMs,
@@ -143,6 +161,7 @@ export function createDualRateLimiter(options: {
     accountMax,
     accountKeyExtractor = (req) => normalizeAccountKey(req.body?.email),
     message = 'Too many requests. Please try again later.',
+    store = sharedStore,
   } = options;
 
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -151,7 +170,7 @@ export function createDualRateLimiter(options: {
     const ipKey = `ip:${clientIp}:${req.baseUrl}${req.path}`;
 
     // 1. Evaluate IP Limit
-    const ipRecord = sharedStore.increment(ipKey, windowMs);
+    const ipRecord = store.increment(ipKey, windowMs);
     if (ipRecord.count > ipMax) {
       const retryAfterSec = Math.max(1, Math.ceil((ipRecord.resetTime - now) / 1000));
       res.setHeader('Retry-After', retryAfterSec);
@@ -170,7 +189,7 @@ export function createDualRateLimiter(options: {
     const account = accountKeyExtractor(req);
     if (account) {
       const accountKey = `acc:${account}:${req.baseUrl}${req.path}`;
-      const accountRecord = sharedStore.increment(accountKey, windowMs);
+      const accountRecord = store.increment(accountKey, windowMs);
 
       if (accountRecord.count > accountMax) {
         const retryAfterSec = Math.max(1, Math.ceil((accountRecord.resetTime - now) / 1000));
@@ -233,7 +252,6 @@ export const resetPasswordRateLimiter = createDualRateLimiter({
   ipMax: 20,
   accountMax: 5,
   accountKeyExtractor: (req) => {
-    // Key by token prefix or empty if not provided
     const token = req.body?.token;
     return typeof token === 'string' && token.length > 8 ? token.slice(0, 16) : null;
   },
