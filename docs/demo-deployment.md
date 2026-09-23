@@ -21,15 +21,14 @@ The demo uses a new, separate database with a fictional school and administrator
 teacher and platform-owner accounts. It does not contain imported real student
 records. Existing VPS applications remain configured.
 
-## DNS required
+## DNS and HTTPS verified
 
-Add A records `app` and `demo`, both pointing to `76.13.156.131`, in the
-ifyspace.tech DNS zone. Leave the root-domain record unchanged. Caddy is configured
-for these two hosts and will obtain certificates when authoritative DNS resolves
-correctly and ports 80/443 can reach the VPS. Check both certificates and browser
-flows before describing the public demo as live.
+Both app.ifyspace.tech and demo.ifyspace.tech resolve to 76.13.156.131.
+Trusted Let's Encrypt certificates were issued on 23 September 2026.
+Both public login URLs return HTTP 200 over certificate-verified HTTPS.
 
-Expected URLs:
+Live URLs:
+
 
 - `https://app.ifyspace.tech/login` — main portal
 - `https://demo.ifyspace.tech/login` — school portal
@@ -56,8 +55,7 @@ Clean dependency installation in an isolated Node 22 container on the VPS.
 Three SQLite migrations applied to the new demo database. Live API tests verified
 admin, teacher and platform-owner login, session validation and logout revocation.
 Unknown hostnames are rejected, email is explicitly disabled, and the mail-capture
-URL is unavailable. Public DNS/TLS and browser verification remained pending when
-this note was prepared. Build warnings about bundle size remain non-fatal.
+URL is unavailable. Public DNS/TLS are verified. Browser checks passed for school administrator login, settings loading with the correct school identity, and logout. Build warnings about bundle size remain non-fatal.
 
 ## Operations
 
@@ -69,3 +67,6 @@ future real-school rollout. Do not run the test suite against the live database.
 Rollback/remove this new demo by stopping only `globepen-demo`, preserving its
 data directory, removing only its two site blocks from Caddy, validating the
 configuration and reloading Caddy. Preserve unrelated site configuration.
+
+Browser review also found legacy UpRecord text and sample statistics/tasks on the dashboard. These remain demo limitations and should be corrected before a real-school rollout.
+
