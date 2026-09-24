@@ -272,7 +272,7 @@ export const AppLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#F8F9FA] dark:bg-slate-950 overflow-hidden font-sans text-gray-900 dark:text-slate-100 transition-colors duration-200">
+    <div data-school-workspace className="flex h-screen bg-[#F8F9FA] dark:bg-slate-950 overflow-hidden font-sans text-gray-900 dark:text-slate-100 transition-colors duration-200">
       {/* Desktop Sidebar with collapse transition */}
       <motion.div
         animate={{ 
@@ -515,7 +515,7 @@ export const AppLayout: React.FC = () => {
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className={`mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500 w-full min-h-full flex flex-col ${isImmersive ? 'p-0' : 'p-6 lg:p-10'}`}
           >
-            <Outlet />
+            {!["/registry", "/registry/history", "/dashboard", "/settings"].includes(location.pathname) && <div role="note" className="m-4 p-4 rounded-lg bg-amber-50 text-amber-950 text-sm">Pilot: this academic screen uses browser-local records. For records shared across devices, open <a href="/registry" className="font-bold underline">School Registry</a>.</div>}<Outlet />
           </motion.div>
         </main>
 

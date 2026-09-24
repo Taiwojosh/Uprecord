@@ -12,10 +12,10 @@ export const PlatformLandingPage: React.FC = () => {
         <div className="flex gap-4 items-center">
           <a href="/login" className="text-white/70 hover:text-white transition text-sm">Sign In</a>
           <a
-            href="mailto:contact@ifyspace.tech"
+            href="https://demo.ifyspace.tech/login"
             className="bg-indigo-500 hover:bg-indigo-400 text-white font-semibold py-2 px-5 rounded-full text-sm transition"
           >
-            Contact Us
+            Explore Demo
           </a>
         </div>
       </nav>
@@ -29,7 +29,7 @@ export const PlatformLandingPage: React.FC = () => {
           The Platform That Powers Schools
         </h1>
         <p className="text-xl text-white/60 max-w-2xl mx-auto mb-10">
-          GlobePen gives schools everything they need — student management, results, reports, attendance, and more — in one elegant platform.
+          A dedicated school portal with school branding, secure sign-in and a shared registry for classes, teachers and students.
         </p>
         <div className="flex gap-4 justify-center flex-wrap">
           <a href="/login" className="bg-indigo-500 hover:bg-indigo-400 text-white font-bold py-3 px-8 rounded-full text-lg transition shadow-lg shadow-indigo-500/30">
@@ -45,9 +45,9 @@ export const PlatformLandingPage: React.FC = () => {
       <section className="container mx-auto px-6 pb-24 max-w-5xl">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { icon: '📊', title: 'Student Results', desc: 'Generate detailed academic results and report cards automatically.' },
-            { icon: '📅', title: 'Attendance Tracking', desc: 'Real-time attendance management across all classes and subjects.' },
-            { icon: '👩‍🏫', title: 'Teacher Portal', desc: 'Dedicated portals for teachers to manage classes and student data.' },
+            { icon: '📊', title: 'School Registry', desc: 'Keep pilot student and class records available across signed-in sessions.' },
+            { icon: '🏫', title: 'School Identity', desc: 'Your school name, colors and dedicated portal address.' },
+            { icon: '🔒', title: 'School Access', desc: 'Role-based access and separate school workspaces.' },
           ].map((f) => (
             <div key={f.title} className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition">
               <div className="text-4xl mb-4">{f.icon}</div>
@@ -60,7 +60,7 @@ export const PlatformLandingPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="border-t border-white/10 py-8 text-center text-white/30 text-sm">
-        © {new Date().getFullYear()} GlobePen · <a href="mailto:contact@ifyspace.tech" className="hover:text-white/60 transition">contact@ifyspace.tech</a>
+        © {new Date().getFullYear()} GlobePen · <a href="https://demo.ifyspace.tech/login" className="hover:text-white/60 transition">Explore the demo</a>
       </footer>
     </div>
   );

@@ -40,6 +40,8 @@ import { UserManualPage } from './pages/UserManualPage';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
 import { ClassesPage } from './pages/ClassesPage';
 import { AccountCreatorPage } from './pages/AccountCreatorPage';
+import { SchoolHistoryPage } from './pages/SchoolHistoryPage';
+import { RegistryPage } from './pages/RegistryPage';
 import { LandingPage } from './pages/LandingPage';
 // WirelessSqliteTestPage removed
 
@@ -125,6 +127,8 @@ export default function App() {
 
         {/* Protected Routes */}
         <Route element={<AuthGuard><AttendanceGuard><AppLayout /></AttendanceGuard></AuthGuard>}>
+          <Route path="/registry/history" element={<SchoolHistoryPage />} />
+          <Route path="/registry" element={<RegistryPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/teacher-portal" element={<TeacherPortalPage />} />
           <Route path="/student-portal" element={<StudentPortalPage />} />
@@ -153,6 +157,7 @@ export default function App() {
           <Route path="/manual" element={<UserManualPage />} />
         </Route>
 
+        <Route path="/license" element={<LicensePage />} />
         <Route path="/" element={<LandingPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

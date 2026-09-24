@@ -23,3 +23,9 @@ prisma/*.db-journal
 runtime-mail/
 *.mail.json
 !server/src/lib/mailSink.ts
+
+# Private school imports must never be bundled
+public/backups/
+src/data/*Backup*.json
+scripts/data_part*.py
+private-imports/

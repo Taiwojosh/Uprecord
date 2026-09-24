@@ -88,7 +88,12 @@ router.put('/:id', requireAdmin, async (req: Request, res: Response) => {
       return;
     }
 
-    const updated = await req.tenantDb!.classes.update(id, req.body);
+    const parsed = createClassSchema.partial().safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid class fields.' });
+      return;
+    }
+    const updated = await req.tenantDb!.classes.update(id, parsed.data);
     res.json({ class: updated });
   } catch (err: any) {
     if (err instanceof TenantIsolationError) {

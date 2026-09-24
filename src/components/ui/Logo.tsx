@@ -36,6 +36,10 @@ export const Logo: React.FC<LogoProps> = ({
             alt={activeSchoolName || 'School Logo'} 
             className="w-full h-full object-contain rounded-lg transition-transform duration-200 hover:scale-105" 
           />
+        ) : activeSchoolName ? (
+          <span aria-label={`${activeSchoolName} initials`} className="w-full h-full rounded-xl flex items-center justify-center font-black" style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--brand-on-primary)', fontSize: size * 0.3 }}>
+            {activeSchoolName.split(/\s+/).filter(Boolean).slice(0, 3).map(word => word[0]).join('')}
+          </span>
         ) : (
           /* GlobePen Stylized Icon: Orbital Globe + Precision Quill Nib */
           <svg 

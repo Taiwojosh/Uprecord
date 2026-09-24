@@ -51,28 +51,7 @@ export const StudentsPage: React.FC = () => {
     }
   }, [user, navigate]);
 
-  React.useEffect(() => {
-    const fixOrphanedRecords = async () => {
-      if (schoolId && schoolId !== 'school-1') {
-        try {
-          const count = await db.students.where('schoolId').equals('school-1').count();
-          const userCount = await db.users.where('schoolId').equals('school-1').count();
-          if (count > 0 || userCount > 0) {
-            await db.transaction('rw', [db.students, db.classes, db.subjects, db.users], async () => {
-              await db.students.where('schoolId').equals('school-1').modify({ schoolId });
-              await db.classes.where('schoolId').equals('school-1').modify({ schoolId });
-              await db.subjects.where('schoolId').equals('school-1').modify({ schoolId });
-              await db.users.where('schoolId').equals('school-1').modify({ schoolId });
-            });
-            showToast(`Migrated ${count + userCount} imported records & user logins to your active school registry!`, 'success');
-          }
-        } catch (e) {
-          console.error('Failed to auto-migrate legacy imports', e);
-        }
-      }
-    };
-    fixOrphanedRecords();
-  }, [schoolId, showToast]);
+
 
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -134,7 +113,7 @@ export const StudentsPage: React.FC = () => {
   const allStudents = useLiveQuery(() => schoolId ? db.students.where('schoolId').equals(schoolId).toArray() : []) || [];
   const teacherSubjects = useLiveQuery(async () => {
     if (user?.role === 'teacher') {
-      const all = await db.subjects.toArray();
+      const all = schoolId ? await db.subjects.where('schoolId').equals(schoolId).toArray() : [];
       return all.filter(s => s.teacherId === Number(user.id) || s.assistantTeacherIds?.includes(Number(user.id)));
     }
     return [];

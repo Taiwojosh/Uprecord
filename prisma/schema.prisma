@@ -10,6 +10,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Private import receipt prevents accidentally applying a legacy backup twice.
+model LegacyImportReceipt {
+  schoolId String
+  sourceHash String
+  report String
+  @@id([schoolId, sourceHash])
+}
+
 // ─── Multi-Tenant Core ───────────────────────────────────────────────
 
 model School {

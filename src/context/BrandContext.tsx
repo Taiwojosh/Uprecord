@@ -3,6 +3,7 @@ import api from '../lib/api';
 import { PublicBranding, GLOBEPEN_DEFAULTS } from '../config/branding';
 import { useAuth } from './AuthContext';
 import type { BrandingResponse } from '../../server/src/contracts/branding';
+import { brandContrast } from '../lib/brandContrast';
 
 interface BrandContextType {
   branding: PublicBranding;
@@ -26,6 +27,9 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const root = document.documentElement;
     root.style.setProperty('--brand-primary', b.brandColor || GLOBEPEN_DEFAULTS.brandColor);
     root.style.setProperty('--brand-secondary', b.secondaryColor || GLOBEPEN_DEFAULTS.secondaryColor);
+    root.style.setProperty('--brand-on-primary', brandContrast(b.brandColor || GLOBEPEN_DEFAULTS.brandColor));
+    root.style.setProperty('--brand-on-secondary', brandContrast(b.secondaryColor || GLOBEPEN_DEFAULTS.secondaryColor));
+    root.classList.toggle('school-portal', Boolean(b.schoolId));
 
     // Update document title
     if (b.schoolId && b.schoolName) {

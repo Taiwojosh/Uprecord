@@ -70,29 +70,7 @@ export const TeachersPage: React.FC = () => {
     }
   }, [location.state, navigate]);
 
-  useEffect(() => {
-    const fixOrphanedRecords = async () => {
-      const schoolId = user?.schoolId;
-      if (schoolId && schoolId !== 'school-1') {
-        try {
-          const count = await db.students.where('schoolId').equals('school-1').count();
-          const userCount = await db.users.where('schoolId').equals('school-1').count();
-          if (count > 0 || userCount > 0) {
-            await db.transaction('rw', [db.students, db.classes, db.subjects, db.users], async () => {
-              await db.students.where('schoolId').equals('school-1').modify({ schoolId });
-              await db.classes.where('schoolId').equals('school-1').modify({ schoolId });
-              await db.subjects.where('schoolId').equals('school-1').modify({ schoolId });
-              await db.users.where('schoolId').equals('school-1').modify({ schoolId });
-            });
-            showToast(`Migrated ${count + userCount} imported records & user logins to your active school registry!`, 'success');
-          }
-        } catch (e) {
-          console.error('Failed to auto-migrate legacy imports', e);
-        }
-      }
-    };
-    fixOrphanedRecords();
-  }, [user?.schoolId, showToast]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [selectedTeacher, setSelectedTeacher] = useState<IUser | null>(null);
@@ -142,6 +120,7 @@ export const TeachersPage: React.FC = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.schoolId) { showToast('Sign in to your school first.', 'error'); return; }
     setIsRegistering(true);
     try {
       if (editingTeacher) {
@@ -170,12 +149,12 @@ export const TeachersPage: React.FC = () => {
           phone: regFormData.phone,
           department: regFormData.department,
           role: 'teacher',
-          schoolId: user?.schoolId || 'school-1',
+          schoolId: user.schoolId,
           isAdmin: regFormData.isAdmin,
           status: 'pending_activation',
           joinDate: new Date().toISOString()
         });
-        showToast('Faculty member onboarded. Account ready for password setup.', 'success');
+        showToast('Teacher saved in this browser only. Use School Registry for shared records.', 'success');
       }
       setRegFormData({ fullName: '', email: '', phone: '', department: '', isAdmin: false });
       setIsRegModalOpen(false);
@@ -784,4 +763,3 @@ const CheckCircle2: React.FC<{ size?: number, className?: string }> = ({ size = 
     <path d="m9 12 2 2 4-4" />
   </svg>
 );
-

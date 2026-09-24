@@ -5,3 +5,8 @@ dist
 *.db
 prisma/*.db
 *.tgz
+
+public/backups
+src/data/*Backup*.json
+scripts/data_part*.py
+private-imports

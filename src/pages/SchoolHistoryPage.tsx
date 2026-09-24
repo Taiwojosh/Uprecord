@@ -1,0 +1,17 @@
+import React, { useEffect, useState } from 'react';
+import api from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+const labels = { grades: 'Academic results', traitGrades: 'Trait scores', attendance: 'Term attendance', dailyAttendance: 'Daily attendance' };
+export function SchoolHistoryPage() {
+  const { user }=useAuth();
+  const [kind,setKind]=useState('grades'); const [page,setPage]=useState(1); const [search,setSearch]=useState(''); const [query,setQuery]=useState('');
+  const [data,setData]=useState<any>(null); const [error,setError]=useState('');
+  useEffect(()=>{const controller=new AbortController();setData(null);setError('');api.get('/registry/history',{params:{kind,page,search:query},signal:controller.signal}).then(({data})=>{if(data.schoolId!==user?.schoolId)throw new Error('School mismatch');setData(data);}).catch(e=>{if(!controller.signal.aborted)setError(e.response?.data?.error||'Could not load historical records.');});return()=>controller.abort();},[kind,page,query,user?.schoolId]);
+  return <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-6"><header><h1 className="text-3xl font-bold">School Historical Records</h1><p className="text-gray-600 mt-3">Saved academic records from your school's backups. Read-only history is kept separately from new report editing.</p></header>
+    <div className="flex flex-wrap gap-3">{Object.entries(labels).map(([key,label])=><button className={`rounded-lg px-4 py-3 ${kind===key?'bg-blue-700 text-white':'bg-gray-100 text-gray-900'}`} key={key} onClick={()=>{setKind(key);setPage(1);}} aria-pressed={kind===key}>{label}{data?` (${data.counts[key]})`:''}</button>)}</div>
+    <form className="flex flex-wrap gap-3" onSubmit={e=>{e.preventDefault();setQuery(search);setPage(1);}}><label className="flex-1 min-w-48">Find student<input className="block border rounded-lg p-3 w-full mt-2" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name or admission number"/></label><button className="self-end rounded-lg bg-blue-700 text-white px-5 py-3">Search</button></form>
+    {error&&<p role="alert">{error}</p>}
+    {!data&&!error&&<p aria-busy="true">Loading history…</p>}
+    {data&&<><p>{data.total} matching records · Page {page} of {Math.max(1,Math.ceil(data.total/50))}</p><div className="overflow-x-auto"><table className="w-full text-sm text-left border-collapse"><caption className="sr-only">{labels[kind as keyof typeof labels]}</caption><thead><tr>{['Student','Period','Subject / Trait / Date','Score / Attendance','Remark'].map(h=><th className="p-3 border-b" key={h}>{h}</th>)}</tr></thead><tbody>{data.records.map((r:any)=><tr key={r.id}><td className="p-3 border-b"><strong>{r.student.fullName}</strong><div>{r.student.admissionNumber}</div></td><td className="p-3 border-b">{r.session} · Term {r.term}</td><td className="p-3 border-b">{r.subject?.subjectName||r.trait?.traitName||r.date||'Term total'}</td><td className="p-3 border-b">{kind==='grades'?`${r.total ?? '—'} · ${r.grade||''}`:kind==='traitGrades'?r.score:kind==='attendance'?`${r.daysPresent} / ${r.totalDays} days`:r.status}</td><td className="p-3 border-b">{r.remark||r.teacherRemark||'—'}</td></tr>)}</tbody></table>{data.total===0&&<p className="py-6">No records found.</p>}</div><div className="flex gap-5"><button className="underline disabled:opacity-40" disabled={page<=1} onClick={()=>setPage(page-1)}>Previous</button><button className="underline disabled:opacity-40" disabled={page*50>=data.total} onClick={()=>setPage(page+1)}>Next</button></div></>}
+  </main>;
+}

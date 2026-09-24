@@ -1,29 +1,21 @@
-import { exec } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  console.error('DATABASE_URL not set');
-  process.exit(1);
-}
-
-// Resolve SQLite file path from typical URL formats
-let dbPath = databaseUrl.replace(/^file:/, '').replace(/^sqlite:/, '');
-if (dbPath.startsWith('//')) dbPath = dbPath.slice(2);
-
-const backupsDir = '/srv/globepen/shared/backups';
-fs.mkdirSync(backupsDir, { recursive: true });
-const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-const backupPath = path.join(backupsDir, `devikys-backup-${timestamp}.db`);
-
-const cmd = `sqlite3 "${dbPath}" ".backup '${backupPath}'`;
-exec(cmd, (error, stdout, stderr) => {
-  if (error) {
-    console.error('Backup failed:', error.message);
-    process.exit(1);
-  }
-  // Restrict permissions (read/write for owner only)
-  fs.chmodSync(backupPath, 0o600);
-  console.log(`Backup created at ${backupPath}`);
-});
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, chmodSync, existsSync } from 'node:fs';
+import { isAbsolute, join } from 'node:path';
+const url = process.env.DATABASE_URL;
+if (!url?.startsWith('file:')) throw new Error('Expected an absolute SQLite file: DATABASE_URL');
+const source = url.slice(5);
+if (!isAbsolute(source) || !existsSync(source)) throw new Error('Database path must be absolute and already exist');
+const dir = process.env.BACKUP_DIR || '/srv/globepen/shared/backups';
+mkdirSync(dir, { recursive: true, mode: 0o700 });
+chmodSync(dir, 0o700);
+const output = join(dir, `globepen-${Date.now()}.db`);
+execFileSync('python3', ['-c', `import sqlite3,sys,os
+os.umask(0o077)
+source=sqlite3.connect('file:'+sys.argv[1]+'?mode=ro',uri=True)
+target=sqlite3.connect(sys.argv[2])
+source.backup(target)
+assert target.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
+target.close()
+source.close()`, source, output], { stdio: 'pipe' });
+chmodSync(output, 0o600);
+console.log(`Verified backup: ${output}`);

@@ -3,6 +3,27 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+/* School identity accents apply to the portal, independently of its hostname. */
+.school-portal [data-school-workspace] :is(.bg-blue-600, .bg-blue-700, .bg-indigo-600, .bg-blue-950) {
+  background-color: var(--brand-primary);
+  color: var(--brand-on-primary);
+}
+.school-portal [data-school-workspace] aside {
+  background-color: var(--brand-secondary);
+  color: var(--brand-on-secondary);
+}
+.school-portal [data-school-workspace] aside :is(a, button, h3, span, strong) {
+  color: inherit;
+}
+.school-portal [data-school-workspace] aside a[aria-current="page"] {
+  background-color: var(--brand-primary);
+  color: var(--brand-on-primary);
+  border-color: var(--brand-primary);
+}
+.school-portal [data-school-workspace] .bg-blue-950 p {
+  color: inherit;
+}
+
 :root {
   /* Dynamic Slate/Charcoal palette for Light Theme structure */
   --brand-primary: #1e293b; /* Slate 800 */
@@ -441,6 +462,3 @@ div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > main:nth-of-
 div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > button:nth-of-type(1) {
   color: #121d2a !important;
 }
-
-
-

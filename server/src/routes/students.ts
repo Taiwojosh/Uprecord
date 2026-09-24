@@ -77,6 +77,10 @@ router.post('/', requireAdmin, async (req: Request, res: Response) => {
       return;
     }
 
+    if (!await req.tenantDb!.classes.findById(parsed.data.classId)) {
+      res.status(400).json({ error: 'Choose a class belonging to your school.' });
+      return;
+    }
     const student = await req.tenantDb!.students.create(parsed.data);
     res.status(201).json({ student });
   } catch (err: any) {
@@ -108,6 +112,10 @@ router.put('/:id', requireAdmin, async (req: Request, res: Response) => {
       return;
     }
 
+    if (parsed.data.classId !== undefined && !await req.tenantDb!.classes.findById(parsed.data.classId)) {
+      res.status(400).json({ error: 'Choose a class belonging to your school.' });
+      return;
+    }
     const student = await req.tenantDb!.students.update(id, parsed.data);
     res.json({ student });
   } catch (err: any) {

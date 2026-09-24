@@ -43,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const myClassesCount = useLiveQuery(async () => {
     if (role !== 'teacher') return 0;
     const userId = user?.id && !isNaN(Number(user.id)) ? Number(user.id) : -1;
-    const all = await db.classes.toArray();
+    const all = user?.schoolId ? await db.classes.where('schoolId').equals(user.schoolId).toArray() : [];
     return all.filter(c => c.teacherId === userId || c.teacherName === user?.fullName).length;
   }, [user, role]) ?? 0;
 
@@ -103,7 +103,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {
         title: 'Master Registry',
         items: [
-          { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { to: '/registry/history', label: 'Historical Records', icon: FileText },
+            { to: '/registry', label: 'School Registry', icon: Database },
+            { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { to: '/students', label: 'Students', icon: Users },
           { to: '/teachers', label: 'Teachers', icon: UserCheck },
           { to: '/classes', label: 'Classes', icon: LayoutGrid },

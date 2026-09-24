@@ -1,198 +1,34 @@
-import React from 'react';
-
-export const DevikysLandingPage: React.FC = () => {
-  return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans">
-      {/* Header */}
-      <header className="bg-black text-yellow-300 sticky top-0 z-50 shadow-lg">
-        <div className="container mx-auto flex justify-between items-center px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center text-black font-black text-lg">D</div>
-            <div>
-              <div className="font-black text-lg tracking-wide leading-tight">DEVIKYS GEM SCHOOLS</div>
-              <div className="text-xs text-yellow-200/70">Shining Brighter Every Day</div>
-            </div>
-          </div>
-          <nav className="hidden md:flex gap-6 text-sm text-yellow-200/80 items-center">
-            <a href="#about" className="hover:text-yellow-300 transition">About</a>
-            <a href="#programs" className="hover:text-yellow-300 transition">Programs</a>
-            <a href="#values" className="hover:text-yellow-300 transition">Values</a>
-            <a href="#contact" className="hover:text-yellow-300 transition">Contact</a>
-          </nav>
-          <a
-            href="/login"
-            className="bg-yellow-400 text-black font-bold py-2 px-5 rounded-full hover:bg-yellow-300 transition text-sm shadow"
-          >
-            School Portal
-          </a>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <section className="relative bg-black text-white overflow-hidden">
-        <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'radial-gradient(circle at 30% 50%, #FFD700 0%, transparent 60%), radial-gradient(circle at 80% 20%, #FF0000 0%, transparent 50%)'}}/>
-        <div className="container mx-auto px-4 py-24 text-center relative z-10">
-          <div className="inline-block border border-yellow-400/50 text-yellow-300 rounded-full px-4 py-1 text-xs tracking-widest uppercase mb-6">
-            Excellence in Education
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black leading-tight mb-6">
-            DEVIKYS<br/>
-            <span className="text-yellow-400">GEM SCHOOLS</span>
-          </h1>
-          <p className="text-lg text-white/70 max-w-2xl mx-auto mb-10">
-            Providing world-class education rooted in character, excellence, and a passion for learning. 
-            Where every child shines brighter every day.
-          </p>
-          <div className="flex gap-4 justify-center flex-wrap">
-            <a href="/login" className="bg-yellow-400 text-black font-bold py-3 px-8 rounded-full text-lg hover:bg-yellow-300 transition shadow-lg shadow-yellow-400/30">
-              School Portal →
-            </a>
-            <a href="#about" className="border border-white/30 text-white/80 hover:text-white hover:border-white/60 font-semibold py-3 px-8 rounded-full text-lg transition">
-              Learn More
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="bg-yellow-400 py-10">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center text-black">
-            {[
-              { value: '500+', label: 'Students' },
-              { value: '40+', label: 'Teachers' },
-              { value: '20+', label: 'Years' },
-              { value: '95%', label: 'Pass Rate' },
-            ].map((s) => (
-              <div key={s.label}>
-                <div className="text-4xl font-black">{s.value}</div>
-                <div className="text-sm font-semibold text-black/70 mt-1">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* About */}
-      <section id="about" className="py-20 bg-gray-50">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="inline-block bg-black text-yellow-300 rounded-full px-4 py-1 text-xs tracking-widest uppercase mb-4">
-                About Us
-              </div>
-              <h2 className="text-4xl font-black text-black mb-4 leading-tight">
-                A Legacy of<br/><span className="text-red-600">Academic Excellence</span>
-              </h2>
-              <p className="text-gray-600 leading-relaxed mb-4">
-                DEVIKYS GEM SCHOOLS has been a beacon of education for over two decades. We combine rigorous 
-                academics with a nurturing environment to help every student reach their full potential.
-              </p>
-              <p className="text-gray-600 leading-relaxed">
-                Our holistic approach to education develops not just academic skills but strong moral character, 
-                leadership, and a love for lifelong learning.
-              </p>
-            </div>
-            <div className="bg-black rounded-2xl p-8 text-center text-white">
-              <div className="text-6xl mb-4">🎓</div>
-              <div className="text-yellow-400 font-black text-2xl mb-2">Our Mission</div>
-              <p className="text-white/70 text-sm leading-relaxed">
-                To provide an exceptional learning environment where every student is empowered to discover 
-                their unique gifts, develop critical thinking, and grow into responsible leaders.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Programs */}
-      <section id="programs" className="py-20 bg-white">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <div className="text-center mb-12">
-            <div className="inline-block bg-yellow-100 text-black rounded-full px-4 py-1 text-xs tracking-widest uppercase mb-4 font-semibold">
-              Academic Programs
-            </div>
-            <h2 className="text-4xl font-black text-black">What We Offer</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { icon: '📚', title: 'Primary School', desc: 'Strong foundation in literacy, numeracy, and creative learning for ages 5–11.' },
-              { icon: '🔬', title: 'Secondary School', desc: 'Comprehensive curriculum with science, arts and commercial tracks for ages 12–18.' },
-              { icon: '🏆', title: 'Extra-Curriculars', desc: 'Sports, debates, science clubs, and cultural activities to develop the whole child.' },
-            ].map((p) => (
-              <div key={p.title} className="border-2 border-gray-100 rounded-2xl p-6 hover:border-yellow-400 hover:shadow-lg transition group">
-                <div className="text-5xl mb-4">{p.icon}</div>
-                <h3 className="text-xl font-black text-black mb-2 group-hover:text-yellow-600 transition">{p.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{p.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Values */}
-      <section id="values" className="py-20 bg-black text-white">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <div className="text-center mb-12">
-            <div className="inline-block bg-yellow-400/20 text-yellow-300 rounded-full px-4 py-1 text-xs tracking-widest uppercase mb-4 font-semibold">
-              Our Values
-            </div>
-            <h2 className="text-4xl font-black">What We Stand For</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { icon: '💡', label: 'Excellence' },
-              { icon: '🤝', label: 'Integrity' },
-              { icon: '❤️', label: 'Compassion' },
-              { icon: '🌍', label: 'Community' },
-            ].map((v) => (
-              <div key={v.label} className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:bg-yellow-400/10 hover:border-yellow-400/30 transition">
-                <div className="text-4xl mb-3">{v.icon}</div>
-                <div className="font-black text-yellow-300">{v.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Contact */}
-      <section id="contact" className="py-20 bg-gray-50">
-        <div className="container mx-auto px-4 max-w-3xl text-center">
-          <div className="inline-block bg-black text-yellow-300 rounded-full px-4 py-1 text-xs tracking-widest uppercase mb-4 font-semibold">
-            Get In Touch
-          </div>
-          <h2 className="text-4xl font-black text-black mb-4">Contact Us</h2>
-          <p className="text-gray-500 mb-8">Have questions? We'd love to hear from you.</p>
-          <div className="grid md:grid-cols-3 gap-6 mb-10">
-            {[
-              { icon: '📍', label: 'Address', value: 'Nigeria' },
-              { icon: '📞', label: 'Phone', value: 'Contact school admin' },
-              { icon: '📧', label: 'Email', value: 'Contact via portal' },
-            ].map((c) => (
-              <div key={c.label} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div className="text-3xl mb-2">{c.icon}</div>
-                <div className="text-sm text-gray-400 uppercase tracking-wide">{c.label}</div>
-                <div className="font-bold text-gray-800 mt-1">{c.value}</div>
-              </div>
-            ))}
-          </div>
-          <a href="/login" className="inline-block bg-black text-yellow-400 font-black py-3 px-8 rounded-full text-lg hover:bg-gray-900 transition">
-            Access School Portal →
-          </a>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-black text-white/50 py-8 text-center text-sm">
-        <div className="container mx-auto px-4">
-          <div className="font-black text-yellow-400 text-lg mb-1">DEVIKYS GEM SCHOOLS</div>
-          <div className="mb-4">Shining Brighter Every Day</div>
-          <div className="text-xs text-white/30">
-            © {new Date().getFullYear()} DEVIKYS GEM SCHOOLS · 
-            <span className="ml-2">Powered by <a href="https://app.ifyspace.tech" className="text-white/40 hover:text-white/60 transition">GlobePen</a></span>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
+import React, { useState } from 'react';
+import { BookOpen, GraduationCap, Gem, Laptop, Menu, Music, X } from 'lucide-react';
+import type { PublicBranding } from '../../server/src/contracts/branding';
+const logo = 'https://ik.imagekit.io/devickys/Picsart_25-06-20_11-35-07-065.png?updatedAt=1751896002798';
+const admissions = 'https://docs.google.com/forms/d/e/1FAIpQLSePWVd0Ei9m5ogrCu8tyI4u2lRA2S0HaF1dk79nPxhfdyBBfg/viewform?usp=dialog';
+const nav = [['home','Home'],['about','About'],['programs','Programs'],['facilities','Facilities'],['contact','Contact']];
+const programs = [
+ ['Early Years','Ages 3–6 · Play-based learning focused on creativity and curiosity.',['Multi-sensory exploration','Early literacy & numeracy','Social-emotional development']],
+ ['Elementary','BASIC 1–5 · Foundation building with project-based learning.',['Integrated curriculum','STEM enrichment','Character development']],
+ ['Middle School','JSS 1–3 · Developing analytical thinking and self-discovery.',['Advanced mathematics','Science exploration','Electives & clubs']],
+ ['High School','SS1–SS3 · Preparing students for university and beyond.',['College preparatory courses','Career counseling','Leadership programs']],
+] as const;
+const button='inline-flex justify-center items-center rounded-full px-6 py-3 font-bold bg-red-600 text-white hover:bg-yellow-300 hover:text-black transition-colors';
+// Adapted from the original school HTML supplied by the user; no third-party form scripts.
+export const DevikysLandingPage = ({branding}:{branding:PublicBranding}) => {
+ const [open,setOpen]=useState(false);
+ return <div className="bg-black text-white min-h-screen">
+ <header className="sticky top-0 z-40 bg-black/95 border-b border-yellow-300/20"><div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+ <a href="#home" className="flex items-center gap-3 min-w-0"><img src={logo} width="48" height="48" alt="DEVICKYS GEM SCHOOL logo" className="rounded-lg"/><span className="font-black text-base lg:text-xl">{branding.schoolName}</span></a>
+ <nav aria-label="Main navigation" className="hidden xl:flex items-center gap-6">{nav.map(([id,label])=><a key={id} href={`#${id}`} className="hover:text-yellow-300">{label}</a>)}</nav>
+ <div className="flex items-center gap-2"><a href="/login" className="rounded-full bg-yellow-300 text-black px-4 py-3 font-bold whitespace-nowrap text-sm">School Portal</a><button aria-label={open?'Close menu':'Open menu'} aria-expanded={open} aria-controls="school-navigation" className="xl:hidden p-2" onClick={()=>setOpen(!open)}>{open?<X/>:<Menu/>}</button></div></div>
+ {open&&<nav id="school-navigation" aria-label="Mobile navigation" className="xl:hidden px-6 pb-5 grid gap-4">{nav.map(([id,label])=><a key={id} href={`#${id}`} onClick={()=>setOpen(false)}>{label}</a>)}</nav>}</header>
+ <main><section id="home" className="scroll-mt-24 min-h-[75vh] flex items-center bg-cover bg-center" style={{backgroundImage:`linear-gradient(100deg,rgba(0,0,0,.92),rgba(0,0,0,.65)),url('${logo}')`}}><div className="max-w-7xl w-full mx-auto px-6 py-24">
+ <p className="inline-block rounded-full bg-red-600 px-4 py-2 text-sm font-bold mb-7">Be of a Strong Will and Intellect</p>
+ <h1 className="font-black text-4xl md:text-6xl lg:text-7xl leading-tight max-w-5xl"><span className="text-[#FFF44F]">EXCELLENCE</span> IN EDUCATION<br/><span className="text-yellow-300">SHINING</span> THE WAY FORWARD</h1>
+ <p className="text-lg md:text-xl text-gray-200 max-w-2xl mt-8 leading-relaxed">At DEVICKYS GEM SCHOOL, we are committed to nurturing every child's unique talents, fostering academic excellence, and developing well-rounded citizens ready to make a positive impact on the world.</p>
+ <div className="flex flex-wrap gap-4 mt-10"><a href={admissions} className={button}>Apply Today</a><a href="/login" className="rounded-full border-2 border-yellow-300 text-yellow-300 px-6 py-3 font-bold hover:bg-yellow-300 hover:text-black">Enter School Portal</a></div></div></section>
+ <section id="about" className="scroll-mt-24 max-w-7xl mx-auto px-6 py-20"><p className="text-yellow-300 uppercase tracking-widest text-sm mb-4">Why choose our school</p><h2 className="text-3xl md:text-5xl font-black mb-8">Our Vision & Mission</h2><p className="text-lg text-gray-300 leading-relaxed max-w-4xl">Founded in 2010, DEVICKYS GEM SCHOOL envisions a world where every child discovers their unique brilliance. Our mission is to provide exceptional education that ignites curiosity, fosters creativity, and develops leaders for tomorrow.</p><div className="grid md:grid-cols-2 gap-6 mt-10">{[['World-Class Faculty','Highly qualified educators with international experience'],['Holistic Development','Balancing academics, arts, sports, and values education']].map(([title,desc])=><article key={title} className="border border-yellow-300/30 bg-gray-900 rounded-2xl p-7"><Gem className="text-yellow-300 mb-5"/><h3 className="text-xl font-bold text-yellow-200 mb-3">{title}</h3><p className="text-gray-300">{desc}</p></article>)}</div></section>
+ <section id="programs" className="scroll-mt-24 bg-gray-950 px-6 py-20"><div className="max-w-7xl mx-auto"><h2 className="text-3xl md:text-5xl font-black text-[#FFF44F] mb-6">Our Academic Programs</h2><p className="text-gray-300 text-lg max-w-3xl mb-12">Comprehensive academic programs designed to meet each child's developmental needs and challenge their growing minds.</p><div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">{programs.map(([title,desc,items])=><article key={title} className="rounded-2xl border border-yellow-300/40 bg-gray-900 p-6"><GraduationCap className="text-yellow-300 mb-6" size={36}/><h3 className="text-xl font-bold text-yellow-300 mb-4">{title}</h3><p className="text-gray-300 mb-6">{desc}</p><ul className="space-y-3">{items.map(item=><li key={item}>✓ {item}</li>)}</ul><a href="#contact" className="inline-block text-yellow-300 underline mt-6">Enquire about this program</a></article>)}</div><h3 className="text-2xl font-bold mt-16 mb-7">Our Specialized Programs</h3><div className="grid md:grid-cols-3 gap-6">{[['GEM JET Academy','Science, Technology, Engineering, Arts and Mathematics through innovation projects and competitions.'],['Creative Arts Conservatory','Visual arts, theater, music and dance.'],['Sports Excellence','Developing athletic potential through specialized coaching.']].map(([title,desc])=><article key={title} className="p-6 rounded-2xl border border-gray-700"><h4 className="font-bold text-yellow-300 text-xl mb-3">{title}</h4><p className="text-gray-300">{desc}</p></article>)}</div></div></section>
+ <section id="facilities" className="scroll-mt-24 max-w-7xl mx-auto px-6 py-20"><h2 className="font-black text-3xl md:text-5xl mb-12 text-[#FFF44F]">Our Facilities</h2><div className="grid md:grid-cols-3 gap-8">{[{icon:Laptop,title:'Smart Classrooms',text:'Classrooms with interactive boards, digital resources and internet access to enhance learning.'},{icon:BookOpen,title:'Resource Library',text:'Books and digital resources with quiet study spaces to cultivate a love for reading.'},{icon:Music,title:'Performing Arts Theater',text:'An auditorium for performances and assemblies.'}].map(({icon:Icon,title,text})=><article key={title}><Icon className="text-yellow-300 mb-5" size={36}/><h3 className="text-xl font-bold mb-3">{title}</h3><p className="text-gray-300">{text}</p></article>)}</div></section>
+ <section className="px-6 py-12"><div className="max-w-5xl mx-auto rounded-3xl border-2 border-yellow-300 bg-gray-950 p-8 md:p-16 text-center"><h2 className="font-bold text-3xl mb-6">Ready to Enroll Your Child?</h2><p className="text-gray-300 text-lg mb-8">Join our community of learners and discover the GEM difference today.</p><a className={button} href={admissions}>Start Your Application</a></div></section>
+ <section id="contact" className="scroll-mt-24 max-w-7xl mx-auto px-6 py-20"><h2 className="text-3xl md:text-5xl font-black text-[#FFF44F] mb-10">Get In Touch</h2><div className="grid md:grid-cols-2 gap-12"><div><p className="text-lg text-gray-300 mb-7">Reach out to schedule a visit, ask questions, or begin the enrollment process.</p><h3 className="text-yellow-300 font-bold mb-3">Address</h3><p>2b, Omotola Street, Iwaya<br/>Sabo Yaba, Lagos, Nigeria</p><h3 className="text-yellow-300 font-bold mt-6 mb-3">Email</h3><a className="underline break-all" href="mailto:devickyscollege@gmail.com">devickyscollege@gmail.com</a></div><div className="rounded-2xl bg-gray-900 p-8"><h3 className="text-xl font-bold mb-4">Contact the school</h3><p className="text-gray-300 mb-6">Send your enquiry by email, or use the admissions form to apply. Your email application will open when you choose the link below.</p><a className={button} href="mailto:devickyscollege@gmail.com">Write an Email</a><a className="block underline text-yellow-300 mt-6" href="https://www.facebook.com/share/172cMiWSUC/">Find us on Facebook</a></div></div></section></main>
+ <footer className="border-t border-gray-800 px-6 py-10 text-center text-gray-400"><p>© {new Date().getFullYear()} DEVICKYS GEM SCHOOL · Shining Brighter Every Day</p><p className="text-sm mt-3">Powered by <a className="underline" href="https://app.ifyspace.tech/">GlobePen</a></p></footer></div>;
 };

@@ -271,6 +271,9 @@ describe('GlobePen Multi-Tenancy, Hostname Resolution & Branding Suite', () => {
     });
 
     it('Client-supplied schoolId parameter tampering is stripped and cannot cross boundaries', async () => {
+      const cls = await prisma.class.create({
+        data: { schoolId: schoolAlpha.id, className: 'Alpha Class 1', level: 'Primary' },
+      });
       // Alpha admin creates student but passes schoolId: schoolBeta.id
       const res = await request(app)
         .post('/api/students')
@@ -280,7 +283,7 @@ describe('GlobePen Multi-Tenancy, Hostname Resolution & Branding Suite', () => {
           admissionNumber: 'TAMPER-001',
           fullName: 'Tampered Student',
           gender: 'Male',
-          classId: 1,
+          classId: cls.id,
           schoolId: schoolBeta.id, // Attempt to inject Beta's schoolId
         });
 
@@ -360,6 +363,27 @@ describe('GlobePen Multi-Tenancy, Hostname Resolution & Branding Suite', () => {
       expect(activeRes.body.branding.schoolId).toBe(schoolAlpha.id);
       expect(activeRes.body.branding.schoolName).toBe('Alpha Academy');
       expect(activeRes.body.branding.customDomain).toBe(customDomain);
+    });
+
+    it('serves the exact same branding on school subdomain and verified custom domain', async () => {
+      const subdomainRes = await request(app)
+        .get('/api/schools/branding')
+        .set('Host', 'alpha-academy.localhost');
+
+      const customDomainRes = await request(app)
+        .get('/api/schools/branding')
+        .set('Host', customDomain);
+
+      expect(subdomainRes.status).toBe(200);
+      expect(customDomainRes.status).toBe(200);
+      expect(customDomainRes.body.branding).toMatchObject({
+        schoolId: subdomainRes.body.branding.schoolId,
+        schoolName: subdomainRes.body.branding.schoolName,
+        brandColor: subdomainRes.body.branding.brandColor,
+        secondaryColor: subdomainRes.body.branding.secondaryColor,
+        portalTitle: subdomainRes.body.branding.portalTitle,
+        logoUrl: subdomainRes.body.branding.logoUrl,
+      });
     });
 
     it('Changing custom domain immediately resets verification to unverified', async () => {
