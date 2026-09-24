@@ -205,6 +205,10 @@ export const DomainBrandingManager: React.FC = () => {
           </div>
         </div>
 
+        <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-2xl p-3 leading-relaxed">
+          The school name, motto, address, logo and primary brand colour are managed under <strong>Settings &gt; Identity</strong>. This section controls the portal title, secondary colour and support contact details.
+        </p>
+
         <form onSubmit={handleSaveBranding} className="space-y-6 pt-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -347,8 +351,21 @@ export const DomainBrandingManager: React.FC = () => {
           </div>
         </form>
 
-        {domainInfo?.customDomainVerified && <p className="text-sm text-emerald-700">Domain ownership is verified. Your portal uses this school's saved logo and colors.</p>}
-        {/* Pending domains still require ownership verification. */}
+        {domainInfo?.customDomainVerified && (
+          <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-100 text-xs space-y-1.5">
+            <p className="font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              Domain ownership verified
+            </p>
+            {domainInfo.domainVerifiedAt && (
+              <p className="text-emerald-700 font-medium">Verified on {new Date(domainInfo.domainVerifiedAt).toLocaleString()}</p>
+            )}
+            <p className="text-emerald-700 font-medium leading-relaxed">
+              Next step: point this domain's DNS routing at your deployment and complete the proxy/TLS setup before sending production traffic to it. Ownership verification alone does not serve the portal.
+            </p>
+          </div>
+        )}
+        {/* Only an unverified domain still needs the ownership challenge below. */}
         {domainInfo?.customDomain && !domainInfo.customDomainVerified && (
           <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-3xl space-y-4 text-xs">
             <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
@@ -377,7 +394,7 @@ export const DomainBrandingManager: React.FC = () => {
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Value / Content</span>
                 <div className="flex items-center justify-between gap-1">
                   <span className="font-mono font-bold text-slate-900 truncate text-[11px]">
-                    {domainInfo.domainVerificationToken || 'Generating token...'}
+                    {domainInfo.domainVerificationToken || 'No active challenge. Save the domain again to generate a new one.'}
                   </span>
                   {domainInfo.domainVerificationToken && (
                     <button
@@ -395,14 +412,7 @@ export const DomainBrandingManager: React.FC = () => {
             {/* Verification Status Action */}
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="text-[11px] text-slate-500 font-medium">
-                {domainInfo.customDomainVerified ? (
-                  <span className="text-emerald-700 font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 inline" />
-                    Verified on {new Date(domainInfo.domainVerifiedAt || '').toLocaleString()}
-                  </span>
-                ) : (
-                  <span>After adding the TXT record, click "Verify DNS Ownership" to validate.</span>
-                )}
+                After adding the TXT record, click "Verify DNS Ownership" to validate.
               </div>
 
               {!domainInfo.customDomainVerified && (

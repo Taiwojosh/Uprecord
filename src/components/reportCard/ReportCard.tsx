@@ -18,6 +18,7 @@ import {
   generatePrincipalRemark
 } from '../../lib/calculationEngine';
 import { CumulativeRow } from '../../types/reportCard';
+import { brandContrast } from '../../lib/brandContrast';
 import { useLicense } from '../../hooks/useLicense';
 import { ClassicTemplate } from './templates/ClassicTemplate';
 import { ModernTemplate } from './templates/ModernTemplate';
@@ -124,9 +125,11 @@ export const ReportCard: React.FC<ReportCardProps> = ({
     return scores;
   }, [traitGrades]);
 
+  // A school brand color can be light (for example gold), so derive readable text for it.
+  const brandBackground = isPremium && settings.brandColor ? settings.brandColor : '#1f2937';
   const brandStyle = {
-    backgroundColor: isPremium ? settings.brandColor : '#1f2937',
-    color: '#FFFFFF'
+    backgroundColor: brandBackground,
+    color: brandContrast(brandBackground)
   };
 
   const templateProps = {

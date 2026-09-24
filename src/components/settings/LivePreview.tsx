@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSettings } from '../../hooks/useSettings';
+import { brandContrast } from '../../lib/brandContrast';
 import { GraduationCap, MapPin, Phone, Mail, User, Calendar, Clock, Award } from 'lucide-react';
 
 export const LivePreview: React.FC = () => {
@@ -31,6 +32,9 @@ export const LivePreview: React.FC = () => {
   } = settings;
 
   const termLabel = currentTerm === 1 ? 'First Term' : currentTerm === 2 ? 'Second Term' : 'Third Term';
+  // Keep preview text readable when the school picks a light brand color such as gold.
+  const brandBackground = brandColor || '#1f2937';
+  const brandOnBackground = brandContrast(brandBackground);
 
   return (
     <div className="h-full flex flex-col bg-white rounded-3xl shadow-2xl shadow-blue-100/50 border border-gray-100 overflow-hidden sticky top-10">
@@ -54,11 +58,11 @@ export const LivePreview: React.FC = () => {
       <div className={`flex-1 overflow-y-auto p-6 space-y-6 ${reportCardTemplate === 'minimal' ? 'p-4 space-y-4' : ''}`}>
         {/* Report Card Header */}
         <div 
-          className={`p-6 text-white space-y-4 relative overflow-hidden ${
+          className={`p-6 space-y-4 relative overflow-hidden ${
             reportCardTemplate === 'modern' ? 'rounded-[2rem] shadow-xl' : 
             reportCardTemplate === 'minimal' ? 'rounded-xl p-4' : 'rounded-2xl'
           }`}
-          style={{ backgroundColor: brandColor }}
+          style={{ backgroundColor: brandBackground, color: brandOnBackground }}
         >
           {/* Watermark pattern */}
           <div className="absolute inset-0 opacity-10 pointer-events-none">
@@ -89,11 +93,11 @@ export const LivePreview: React.FC = () => {
               } font-black tracking-tight leading-none uppercase`}>
                 {schoolName || "Your School Name"}
               </h1>
-              <p className="text-xs font-medium italic text-blue-100/80">
+              <p className="text-xs font-medium italic opacity-90">
                 {schoolSlogan || "Motto goes here..."}
               </p>
               {reportCardTemplate !== 'minimal' && (
-                <div className="flex items-center gap-3 pt-2 text-[0.625rem] font-bold text-white/70">
+                <div className="flex items-center gap-3 pt-2 text-[0.625rem] font-bold opacity-80">
                   <div className="flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
                     {address || "School Address"}
@@ -107,7 +111,7 @@ export const LivePreview: React.FC = () => {
             <div className="px-3 py-1 bg-white/10 rounded-full text-[0.625rem] font-black uppercase tracking-widest">
               Student Report Card
             </div>
-            <div className="text-[0.5rem] font-bold text-white/40 italic">
+            <div className="text-[0.5rem] font-bold opacity-60 italic">
               GlobePen
             </div>
           </div>
@@ -153,10 +157,10 @@ export const LivePreview: React.FC = () => {
             reportCardTemplate === 'minimal' ? 'rounded-xl' : 'rounded-2xl'
           }`}>
             <div 
-              className={`grid grid-cols-4 p-3 text-[0.5625rem] font-black uppercase tracking-widest text-white ${
+              className={`grid grid-cols-4 p-3 text-[0.5625rem] font-black uppercase tracking-widest ${
                 reportCardTemplate === 'minimal' ? 'p-2' : ''
               }`}
-              style={{ backgroundColor: brandColor }}
+              style={{ backgroundColor: brandBackground, color: brandOnBackground }}
             >
               <div>Subject</div>
               {caComponents.map(ca => (
