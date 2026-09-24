@@ -347,8 +347,9 @@ export const DomainBrandingManager: React.FC = () => {
           </div>
         </form>
 
-        {/* DNS Challenge Instructions Card (When Domain Registered) */}
-        {domainInfo?.customDomain && (
+        {domainInfo?.customDomainVerified && <p className="text-sm text-emerald-700">Domain ownership is verified. Your portal uses this school's saved logo and colors.</p>}
+        {/* Pending domains still require ownership verification. */}
+        {domainInfo?.customDomain && !domainInfo.customDomainVerified && (
           <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-3xl space-y-4 text-xs">
             <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
               <span className="font-black text-slate-800 uppercase tracking-wider text-[11px]">
