@@ -5,6 +5,7 @@ import { useBrand } from '../../context/BrandContext';
 import type { SchoolManagementResponse, DomainRegistrationResponse, DomainVerificationResponse } from '../../../server/src/contracts/branding';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { db } from '../../db/db';
 
 interface DomainInfo {
   customDomain: string | null;
@@ -86,6 +87,17 @@ export const DomainBrandingManager: React.FC = () => {
       });
 
       showToast('Portal branding updated successfully!', 'success');
+      if (user?.schoolId) {
+        await db.transaction('rw', db.settings, async () => {
+          const current = await db.settings.where('schoolId').equals(user.schoolId).first();
+          if (current?.id) {
+            await db.settings.update(current.id, {
+              portalTitle: portalTitle.trim() || undefined,
+              secondaryColor: secondaryColor.trim() || undefined,
+            });
+          }
+        });
+      }
       await refreshBranding();
       await fetchDomainInfo();
     } catch (err: any) {
@@ -357,7 +369,7 @@ export const DomainBrandingManager: React.FC = () => {
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               Domain ownership verified
             </p>
-            {domainInfo.domainVerifiedAt && (
+            {domainInfo.domainVerifiedAt && !isNaN(new Date(domainInfo.domainVerifiedAt).getTime()) && (
               <p className="text-emerald-700 font-medium">Verified on {new Date(domainInfo.domainVerifiedAt).toLocaleString()}</p>
             )}
             <p className="text-emerald-700 font-medium leading-relaxed">

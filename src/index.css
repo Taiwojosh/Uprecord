@@ -25,12 +25,39 @@
 }
 
 :root {
-  /* Dynamic Slate/Charcoal palette for Light Theme structure */
-  --brand-primary: #1e293b; /* Slate 800 */
-  --brand-accent: #dc2626;  /* High-contrast Crimson Red */
-  --brand-surface: #ffffff;
-  --brand-border: #e2e8f0;  /* Slate 200 */
-  --brand-muted: #94a3b8;   /* Slate 400 */
+  /* ── GlobePen platform tokens ─────────────────────────────────────
+     Namespace rule: --app-* is the platform's own chrome. --brand-*
+     belongs to the school and is written at runtime by BrandContext
+     (--brand-primary, --brand-secondary, --brand-on-primary,
+     --brand-on-secondary). Never derive platform chrome from school
+     colours; derive school-branded surfaces only through
+     brandContrast(). */
+  --app-bg: #f8fafc;            /* page */
+  --app-bg-strong: #f1f5f9;     /* recessed page */
+  --app-surface: #ffffff;       /* cards, dialogs */
+  --app-surface-2: #f8fafc;     /* inset panels */
+  --app-border: #e2e8f0;        /* hairline */
+  --app-border-strong: #cbd5e1; /* emphasis */
+  --app-text: #1e293b;          /* body */
+  --app-text-muted: #475569;    /* secondary */
+  --app-text-subtle: #64748b;   /* captions */
+  --app-primary: #1e293b;       /* platform action */
+  --app-primary-hover: #0f172a;
+  --app-on-primary: #f8fafc;    /* text on platform action */
+  --app-accent: #dc2626;        /* signal colour */
+  --app-danger: #dc2626;
+  --app-danger-hover: #b91c1c;
+  --app-success: #059669;
+  --app-warning: #d97706;
+  --app-info: #2563eb;
+  --app-focus: #2563eb;         /* visible focus, never school-derived */
+
+  /* Legacy aliases — kept so existing renders are unchanged while screens
+     migrate to --app-*. Do not add new references to these names. */
+  --brand-accent: var(--app-accent);
+  --brand-surface: var(--app-surface);
+  --brand-border: var(--app-border);
+  --brand-muted: var(--app-text-subtle);
 
   /* Crimson Red variations for actions/buttons in Light Theme */
   --blue-50: #fef2f2;
@@ -60,12 +87,22 @@
 }
 
 .dark {
-  /* Elegant contrastful palette for Dark Theme structure */
-  --brand-primary: #cbd5e1; /* Soft slate white */
-  --brand-accent: #f43f5e;  /* Distinct Glowing Rose-Crimson (never same as Light Red!) */
-  --brand-surface: #0f172a; /* Slate 900 background */
-  --brand-border: #1e293b;  /* Slate 800 */
-  --brand-muted: #475569;   /* Slate 600 */
+  /* Elegant contrastful palette for Dark Theme structure. --app-* values are
+     the platform token overrides; --brand-* is never redefined here so saved
+     school colours stay identical in both modes. */
+  --app-bg: #020617;
+  --app-bg-strong: #0f172a;
+  --app-surface: #0f172a;
+  --app-surface-2: #1e293b;
+  --app-border: #1e293b;
+  --app-border-strong: #334155;
+  --app-text: #f8fafc;
+  --app-text-muted: #cbd5e1;
+  --app-text-subtle: #94a3b8;
+  --app-primary: #cbd5e1;
+  --app-primary-hover: #e2e8f0;
+  --app-on-primary: #0f172a;
+  --app-focus: #7dd3fc;
 
   /* Adaptive Rose-Crimson scale (soft glow, high readability, eye-safety on Dark Theme) */
   --blue-50: #2d0a11;  /* Rich Dark Maroon background */
@@ -97,11 +134,15 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   
-  --color-primary: var(--brand-primary);
-  --color-accent: var(--brand-accent);
-  --color-surface: var(--brand-surface);
-  --color-border: var(--brand-border);
-  --color-muted: var(--brand-muted);
+  --color-primary: var(--app-primary);
+  --color-primary-foreground: var(--app-on-primary);
+  --color-accent: var(--app-accent);
+  --color-surface: var(--app-surface);
+  --color-surface-strong: var(--app-bg-strong);
+  --color-border: var(--app-border);
+  --color-border-strong: var(--app-border-strong);
+  --color-muted: var(--app-text-subtle);
+  --color-muted-foreground: var(--app-text-muted);
   
   --color-blue-50: var(--blue-50);
   --color-blue-100: var(--blue-100);
@@ -143,14 +184,29 @@
     font-size: 0.875rem; /* 14px equivalent */
   }
 
-  /* Global reset for default browser focus outlines */
+  /* Global reset for default browser focus outlines.
+     A single platform-owned :focus-visible ring replaces per-browser
+     outlines everywhere. --app-focus is constant so focus stays visible
+     for arbitrary school colours; never key it off --brand-*. */
   input:focus,
   button:focus,
   select:focus,
   textarea:focus,
   a:focus,
   [role="button"]:focus {
-    outline: none !important;
+    outline: none;
+  }
+
+  input:focus-visible,
+  button:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 3px solid var(--app-focus);
+    outline-offset: 2px;
+    border-radius: 6px;
   }
 
   h1 {

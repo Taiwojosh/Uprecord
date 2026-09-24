@@ -16,6 +16,8 @@ const DEFAULT_SETTINGS: Omit<ISettings, 'id'> = {
   principalName: '',
   principalSignatureBase64: '',
   brandColor: '#1d4ed8',
+  secondaryColor: '#1E293B',
+  portalTitle: '',
   nextTermDate: '',
   termClosingDate: '',
   resumptionDate: '',
@@ -67,7 +69,8 @@ export function useSettings() {
       await db.transaction('rw', db.settings, async () => {
         const current = await db.settings.where('schoolId').equals(schoolId).first();
         const identity = { schoolName: b.schoolName, schoolSlogan: b.slogan || '',
-          address: data.address || '', logoBase64: b.logoUrl || '', brandColor: b.brandColor };
+          address: data.address || '', logoBase64: b.logoUrl || '', brandColor: b.brandColor,
+          secondaryColor: b.secondaryColor, portalTitle: b.portalTitle };
         if (current?.id) await db.settings.update(current.id, identity);
         else await db.settings.add({ ...DEFAULT_SETTINGS, schoolId, ...identity } as ISettings);
       });
@@ -94,7 +97,7 @@ export function useSettings() {
     if (!schoolId) return;
     const existing = await db.settings.where('schoolId').equals(schoolId).first();
     
-    const identityFields = { schoolName: 'name', schoolSlogan: 'slogan', address: 'address', logoBase64: 'logoUrl', brandColor: 'brandColor' } as const;
+    const identityFields = { schoolName: 'name', schoolSlogan: 'slogan', address: 'address', logoBase64: 'logoUrl', brandColor: 'brandColor', secondaryColor: 'secondaryColor', portalTitle: 'portalTitle' } as const;
     const identity: Record<string, string | null> = {};
     for (const [local, remote] of Object.entries(identityFields)) {
       const key = local as keyof typeof identityFields;

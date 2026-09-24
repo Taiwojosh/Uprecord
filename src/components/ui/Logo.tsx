@@ -8,6 +8,7 @@ interface LogoProps {
   theme?: 'light' | 'dark' | 'auto';
   customSchoolName?: string;
   customLogoUrl?: string | null;
+  customPortalTitle?: string | null;
 }
 
 export const Logo: React.FC<LogoProps> = ({ 
@@ -17,11 +18,18 @@ export const Logo: React.FC<LogoProps> = ({
   theme = 'auto',
   customSchoolName,
   customLogoUrl,
+  customPortalTitle,
 }) => {
   const { branding, isSchoolPortal } = useBrand();
 
   const activeSchoolName = customSchoolName !== undefined ? customSchoolName : (isSchoolPortal ? branding.schoolName : undefined);
   const activeLogoUrl = customLogoUrl !== undefined ? customLogoUrl : (isSchoolPortal ? branding.logoUrl : null);
+  const activePortalTitle = customPortalTitle !== undefined ? customPortalTitle : (isSchoolPortal ? (branding.portalTitle || activeSchoolName) : activeSchoolName);
+  const [imgError, setImgError] = React.useState(false);
+
+  React.useEffect(() => {
+    setImgError(false);
+  }, [activeLogoUrl]);
 
   return (
     <div className={`inline-flex items-center ${variant === 'full' ? 'gap-2.5' : ''} ${className}`}>
@@ -30,10 +38,11 @@ export const Logo: React.FC<LogoProps> = ({
         className="relative flex items-center justify-center shrink-0 select-none"
         style={{ width: size, height: size }}
       >
-        {activeLogoUrl ? (
+        {activeLogoUrl && !imgError ? (
           <img 
             src={activeLogoUrl} 
             alt={activeSchoolName || 'School Logo'} 
+            onError={() => setImgError(true)}
             className="w-full h-full object-contain rounded-lg transition-transform duration-200 hover:scale-105" 
           />
         ) : activeSchoolName ? (
@@ -109,7 +118,7 @@ export const Logo: React.FC<LogoProps> = ({
               <span className={`text-base font-extrabold tracking-tight truncate max-w-[200px] ${
                 theme === 'dark' ? 'text-white' : 'text-slate-900 dark:text-white'
               }`}>
-                {activeSchoolName}
+                {activePortalTitle || activeSchoolName}
               </span>
               <span className="text-[0.625rem] font-medium tracking-wider text-slate-400 dark:text-slate-400 mt-1 uppercase flex items-center gap-1">
                 Powered by <strong className="text-indigo-400 dark:text-indigo-400 font-bold">GlobePen</strong>

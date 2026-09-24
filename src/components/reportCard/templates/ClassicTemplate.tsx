@@ -88,8 +88,8 @@ export const ClassicTemplate: React.FC<ReportCardTemplateProps> = ({
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="w-16 h-16 bg-white/20 rounded-lg flex items-center justify-center text-white font-black text-xl">
-            {settings.schoolName.charAt(0)}
+          <div className="w-16 h-16 bg-white/20 rounded-lg flex items-center justify-center text-white font-black text-sm tracking-tight px-1">
+            {settings.schoolName.split(/\s+/).filter(Boolean).slice(0, 3).map(w => w[0]).join('').toUpperCase() || 'S'}
           </div>
         )}
         <div className="flex-1 text-center">

@@ -48,13 +48,17 @@ export const MinimalTemplate: React.FC<ReportCardTemplateProps> = ({
           <h1 className="text-3xl font-black tracking-tighter text-gray-900 uppercase">{settings.schoolName}</h1>
           <p className="text-[0.625rem] font-bold text-gray-500 uppercase tracking-widest mt-1">{settings.address}</p>
         </div>
-        {isPremium && settings.logoBase64 && (
+        {isPremium && settings.logoBase64 ? (
           <img 
             src={settings.logoBase64} 
             alt="School Logo" 
             className="w-16 h-16 object-contain grayscale no-capture"
             referrerPolicy="no-referrer"
           />
+        ) : (
+          <div className="w-16 h-16 rounded-xl border border-gray-200 flex items-center justify-center text-slate-700 font-black text-sm">
+            {settings.schoolName.split(/\s+/).filter(Boolean).slice(0, 3).map(w => w[0]).join('').toUpperCase() || 'S'}
+          </div>
         )}
       </div>
 

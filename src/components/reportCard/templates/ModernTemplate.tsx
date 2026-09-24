@@ -68,8 +68,8 @@ export const ModernTemplate: React.FC<ReportCardTemplateProps> = ({
               />
             </div>
           ) : (
-            <div className="w-24 h-24 rounded-[2.5rem] flex items-center justify-center text-white font-black text-4xl shadow-xl shadow-gray-200" style={brandStyle}>
-              {settings.schoolName.charAt(0)}
+            <div className="w-24 h-24 rounded-[2.5rem] flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-gray-200 px-1" style={brandStyle}>
+              {settings.schoolName.split(/\s+/).filter(Boolean).slice(0, 3).map(w => w[0]).join('').toUpperCase() || 'S'}
             </div>
           )}
           <div className="pt-2">

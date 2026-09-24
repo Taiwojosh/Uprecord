@@ -83,7 +83,9 @@ export const LivePreview: React.FC = () => {
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <GraduationCap className={`${reportCardTemplate === 'minimal' ? 'w-8 h-8' : 'w-10 h-10'} text-gray-200`} />
+                <span className="font-black text-slate-800 text-sm sm:text-base select-none">
+                  {(schoolName || 'School').split(/\s+/).filter(Boolean).slice(0, 3).map(w => w[0]).join('').toUpperCase() || 'S'}
+                </span>
               )}
             </div>
             <div className="space-y-1">

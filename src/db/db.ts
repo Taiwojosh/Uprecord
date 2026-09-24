@@ -33,6 +33,8 @@ export interface ISettings {
   principalName: string;
   principalSignatureBase64: string;
   brandColor: string;
+  secondaryColor?: string;
+  portalTitle?: string;
   nextTermDate: string;
   termClosingDate: string;
   resumptionDate?: string;

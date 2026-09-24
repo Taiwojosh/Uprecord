@@ -298,8 +298,20 @@ export const SettingsPage: React.FC = () => {
                   description="Transparent PNG recommended"
                 />
 
+                <div className="sm:col-span-2 space-y-2">
+                  <label htmlFor="portal-title" className="text-sm font-bold text-gray-700 tracking-tight">Portal Display Title</label>
+                  <input id="portal-title" 
+                    type="text" 
+                    value={formData.portalTitle || ''}
+                    onChange={(e) => setFormData({ ...formData, portalTitle: e.target.value })}
+                    placeholder="e.g. DEVICKYS GEM SCHOOL Portal"
+                    className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-gray-900"
+                  />
+                  <p className="text-xs text-gray-400">Displayed in portal navigation, login page header, and browser tab title.</p>
+                </div>
+
                 <div className="space-y-2">
-                  <label htmlFor="primary-color" className="text-sm font-bold text-gray-700 tracking-tight">Brand Color</label>
+                  <label htmlFor="primary-color" className="text-sm font-bold text-gray-700 tracking-tight">Primary Brand Color</label>
                   <div className="flex items-center gap-4 p-4 bg-gray-50 border border-gray-100 rounded-2xl">
                     <input id="primary-color" 
                       type="color" 
@@ -308,6 +320,19 @@ export const SettingsPage: React.FC = () => {
                       className="w-12 h-12 rounded-xl border-none cursor-pointer bg-transparent"
                     />
                     <code className="text-sm font-black text-gray-900 uppercase tracking-widest">{formData.brandColor}</code>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="secondary-color" className="text-sm font-bold text-gray-700 tracking-tight">Secondary Brand Color</label>
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 border border-gray-100 rounded-2xl">
+                    <input id="secondary-color" 
+                      type="color" 
+                      value={formData.secondaryColor || '#1E293B'}
+                      onChange={(e) => setFormData({ ...formData, secondaryColor: e.target.value })}
+                      className="w-12 h-12 rounded-xl border-none cursor-pointer bg-transparent"
+                    />
+                    <code className="text-sm font-black text-gray-900 uppercase tracking-widest">{formData.secondaryColor || '#1E293B'}</code>
                   </div>
                 </div>
 
