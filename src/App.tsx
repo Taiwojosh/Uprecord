@@ -40,6 +40,7 @@ import { UserManualPage } from './pages/UserManualPage';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
 import { ClassesPage } from './pages/ClassesPage';
 import { AccountCreatorPage } from './pages/AccountCreatorPage';
+import { LandingPage } from './pages/LandingPage';
 // WirelessSqliteTestPage removed
 
 // Auth Guard Component
@@ -152,7 +153,7 @@ export default function App() {
           <Route path="/manual" element={<UserManualPage />} />
         </Route>
 
-        <Route path="/" element={<LicensePage />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ErrorBoundary>

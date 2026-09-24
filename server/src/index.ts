@@ -56,6 +56,14 @@ app.use(resolveTenantFromHostname);
 
 // ─── API Routes ──────────────────────────────────────────────────────
 
+// Public endpoint: returns the resolved school slug for the current hostname.
+// Used by the frontend LandingPage to select which landing page to render.
+// Returns { slug: 'devikys' | 'demo' | 'app' } — never exposes sensitive data.
+app.get('/api/tenant', (req, res) => {
+  const slug = req.resolvedSchool ? req.resolvedSchool.slug : 'app';
+  res.json({ slug });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/schools', schoolsRoutes);
