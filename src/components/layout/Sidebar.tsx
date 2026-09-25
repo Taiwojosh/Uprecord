@@ -101,11 +101,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     // Default: Admin
     return [
       {
-        title: 'Master Registry',
+        title: 'School',
         items: [
+          { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { to: '/registry', label: 'School Registry', icon: Database },
           { to: '/registry/history', label: 'Historical Records', icon: FileText },
-            { to: '/registry', label: 'School Registry', icon: Database },
-            { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { to: '/students', label: 'Students', icon: Users },
           { to: '/teachers', label: 'Teachers', icon: UserCheck },
           { to: '/classes', label: 'Classes', icon: LayoutGrid },
@@ -113,21 +113,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         ]
       },
       {
-        title: 'Academics & Analytics',
+        title: 'Teaching & learning',
         items: [
           { to: '/results', label: 'Results', icon: BarChart3 },
           { to: '/lesson-planner', label: 'Lesson Planner', icon: BookOpenCheck },
           { to: '/attendance', label: 'Attendance', icon: Clock },
           { to: '/reports', label: 'Reports', icon: Printer },
-          { to: '/messages', label: 'Messages', icon: Bell },
-          { to: '/announcements', label: 'Announcements', icon: Bell },
         ]
       },
       {
-        title: 'System Operations',
+        title: 'School tools',
         items: [
+          { to: '/communication', label: 'Communication', icon: Bell },
           { to: '/settings', label: 'Settings', icon: Settings },
-          { to: '/manual', label: 'Institutional Manual', icon: BookOpenCheck },
+          { to: '/manual', label: 'Help & guide', icon: BookOpenCheck },
           { to: '/backup', label: 'Database Backup', icon: Database },
           { to: '/audit', label: 'Audit Logs', icon: History },
         ]
@@ -177,6 +176,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                     <NavLink
                       key={item.to}
                       to={item.to}
+                      end={item.to === '/registry'}
                       onClick={() => onClose()}
                       className={({ isActive }) => `
                         relative flex items-center gap-3 px-6 py-2.5 text-[0.8125rem] font-medium transition-all duration-200

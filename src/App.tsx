@@ -26,7 +26,7 @@ import { TeachersPage } from './pages/TeachersPage';
 import { SubjectsPage } from './pages/SubjectsPage';
 import { ResultsPage } from './pages/ResultsPage';
 import { AttendancePage } from './pages/AttendancePage';
-import { MessagesPage } from './pages/MessagesPage';
+import { CommunicationPage, MessageAvailability } from './pages/CommunicationPage';
 import { AuditPage } from './pages/AuditPage';
 import { DataEntryPage } from './pages/DataEntryPage';
 import { BulkImportPage } from './pages/BulkImportPage';
@@ -139,8 +139,13 @@ export default function App() {
           <Route path="/subjects" element={<SubjectsPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/attendance" element={<AttendancePage />} />
-          <Route path="/messages" element={<MessagesPage />} />
-          <Route path="/announcements" element={<AnnouncementsPage />} />
+          <Route path="/communication" element={<CommunicationPage />}>
+            <Route index element={<Navigate to="announcements" replace />} />
+            <Route path="announcements" element={<AnnouncementsPage />} />
+            <Route path="messages" element={<MessageAvailability />} />
+          </Route>
+          <Route path="/messages" element={<Navigate to="/communication/messages" replace />} />
+          <Route path="/announcements" element={<Navigate to="/communication/announcements" replace />} />
           <Route path="/classes" element={<ClassesPage />} />
           <Route path="/account-creator" element={<AccountCreatorPage />} />
           <Route path="/audit" element={<AuditPage />} />

@@ -62,7 +62,7 @@ export const AppLayout: React.FC = () => {
   const teacherClassesCount = useLiveQuery(async () => {
     if (!user || user.role !== 'teacher') return 0;
     const userId = user?.id && !isNaN(Number(user.id)) ? Number(user.id) : -1;
-    const all = await db.classes.toArray();
+    const all = user.schoolId ? await db.classes.where('schoolId').equals(user.schoolId).toArray() : [];
     return all.filter(c => c.teacherId === userId || c.teacherName === user?.fullName).length;
   }, [user]) ?? 0;
 
@@ -72,20 +72,20 @@ export const AppLayout: React.FC = () => {
     if (user.role === 'admin') {
       return [
         {
-          label: 'Register Scholar',
+          label: 'Add student',
           icon: UserPlus,
           onClick: () => {
             setIsFabOpen(false);
-            navigate('/students', { state: { addStudent: true } });
+            navigate('/registry');
           },
           color: 'text-indigo-600 bg-indigo-50 border-indigo-100 hover:bg-indigo-100/70'
         },
         {
-          label: 'Onboard Faculty',
+          label: 'Manage teachers',
           icon: UserCheck,
           onClick: () => {
             setIsFabOpen(false);
-            navigate('/teachers', { state: { addTeacher: true } });
+            navigate('/registry');
           },
           color: 'text-sky-600 bg-sky-50 border-sky-100 hover:bg-sky-100/70'
         },
@@ -108,7 +108,7 @@ export const AppLayout: React.FC = () => {
           color: 'text-amber-600 bg-amber-50 border-amber-100 hover:bg-amber-100/70'
         },
         {
-          label: 'Score Sheet Protocol',
+          label: 'Enter scores',
           icon: ClipboardList,
           onClick: () => {
             setIsFabOpen(false);
@@ -344,7 +344,7 @@ export const AppLayout: React.FC = () => {
                    className="bg-transparent border-none outline-none text-sm font-medium w-full placeholder:text-gray-450 dark:placeholder:text-slate-500 text-gray-900 dark:text-slate-100"
                    onFocus={() => setSearchFocused(true)}
                    onBlur={() => setSearchFocused(false)}
-                   style={{ height: '30px', width: '381.766px', borderStyle: 'solid', borderRadius: '12px' }}
+                   style={{ minHeight: '44px', width: '100%', maxWidth: '24rem', borderStyle: 'solid', borderRadius: '12px' }}
                  />
               </div>
 

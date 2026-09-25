@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
   Bell, 
@@ -24,11 +24,31 @@ import { useAuth } from '../context/AuthContext';
 
 export const AnnouncementsPage: React.FC = () => {
   const { user } = useAuth();
+  const schoolId = user?.schoolId;
+  const canManage = Boolean(schoolId && (user?.role === 'admin' || user?.isAdmin));
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [announcementToDelete, setAnnouncementToDelete] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isAddModalOpen) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsAddModalOpen(false);
+      if (event.key !== 'Tab') return;
+      const controls = dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input, textarea, [tabindex="0"]');
+      if (!controls?.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => { document.removeEventListener('keydown', handleKey); previousFocus?.focus(); };
+  }, [isAddModalOpen]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -39,26 +59,30 @@ export const AnnouncementsPage: React.FC = () => {
   });
 
   const announcements = useLiveQuery(
-    () => db.announcements.reverse().toArray(),
-    []
+    () => schoolId ? db.announcements.where('schoolId').equals(schoolId).toArray() : Promise.resolve([]),
+    [schoolId]
   );
 
   const filteredAnnouncements = announcements?.filter(a => 
     a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     a.content.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  ).sort((a, b) => Number(b.isPinned) - Number(a.isPinned) || b.createdAt.localeCompare(a.createdAt)) || [];
 
   const handleAddAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.content) return;
+    if (!canManage || !schoolId || !formData.title.trim() || !formData.content.trim()) return;
 
     setIsSubmitting(true);
     try {
       await db.announcements.add({
         ...formData,
+        schoolId,
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        authorName: user?.fullName || 'School administrator',
         createdAt: new Date().toISOString()
       });
-      showToast('Announcement posted successfully', 'success');
+      showToast('Draft saved on this device', 'success');
       setIsAddModalOpen(false);
       setFormData({ title: '', content: '', isPinned: false, authorName: 'Administrator' });
     } catch (error) {
@@ -69,8 +93,10 @@ export const AnnouncementsPage: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!announcementToDelete) return;
+    if (!announcementToDelete || !canManage) return;
     try {
+      const draft = await db.announcements.get(announcementToDelete);
+      if (draft?.schoolId !== schoolId) return;
       await db.announcements.delete(announcementToDelete);
       showToast('Announcement deleted', 'success');
     } catch (error) {
@@ -81,7 +107,10 @@ export const AnnouncementsPage: React.FC = () => {
   };
 
   const togglePin = async (id: number, currentStatus: boolean) => {
+    if (!canManage) return;
     try {
+      const draft = await db.announcements.get(id);
+      if (draft?.schoolId !== schoolId) return;
       await db.announcements.update(id, { isPinned: !currentStatus });
     } catch (error) {
       showToast('Failed to update pin status', 'error');
@@ -94,8 +123,8 @@ export const AnnouncementsPage: React.FC = () => {
     <div className="space-y-8 pb-20">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <PageHeader 
-          title="Institutional Communications" 
-          subtitle="Broadcast important updates and announcements to the portal" 
+          title="Announcement drafts"
+          subtitle="Prepare school updates for later sharing."
         />
         {(user?.role === 'admin' || user?.isAdmin) && (
           <button 
@@ -103,17 +132,18 @@ export const AnnouncementsPage: React.FC = () => {
             className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white text-sm font-bold rounded-2xl hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95"
           >
             <Plus className="w-5 h-5" />
-            Post Announcement
+            New draft
           </button>
         )}
       </div>
 
+      <p role="note" className="rounded-xl border border-border bg-surface-strong px-4 py-3 text-sm text-muted-foreground">Drafts are saved in this browser for this school. They are not published or delivered to staff, students or parents.</p>
       {/* Stats Summary */}
       {(user?.role === 'admin' || user?.isAdmin) && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
           <StatCard 
             icon={Bell} 
-            label="Total Broadcasts" 
+            label="Saved drafts"
             value={announcements.length} 
           />
           <StatCard 
@@ -136,7 +166,8 @@ export const AnnouncementsPage: React.FC = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Search communications..."
+            aria-label="Search announcement drafts"
+            placeholder="Search drafts..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 outline-none transition-all text-sm font-medium"
@@ -147,7 +178,7 @@ export const AnnouncementsPage: React.FC = () => {
       {filteredAnnouncements.length === 0 ? (
         <EmptyState 
           icon="Bell" 
-          message={searchTerm ? "No announcements match your search." : "No announcements have been posted yet."} 
+          message={searchTerm ? "No drafts match your search. Try another word." : "No announcement drafts yet. Create a draft to prepare your next school update."}
         />
       ) : (
         <div className="grid grid-cols-1 gap-6">
@@ -166,10 +197,10 @@ export const AnnouncementsPage: React.FC = () => {
                 </div>
               )}
               
-              <div className="flex-1 space-y-4">
+              <div className="flex-1 min-w-0 space-y-4 break-words">
                 <div className="space-y-2">
                   <h3 className="text-xl font-bold text-slate-800 tracking-tight">{announcement.title}</h3>
-                  <div className="flex items-center gap-4 text-slate-400">
+                  <div className="flex flex-wrap items-center gap-4 text-slate-400">
                     <div className="flex items-center gap-1.5 font-bold uppercase tracking-widest text-[0.625rem]">
                       <User className="w-3 h-3" />
                       {announcement.authorName}
@@ -234,6 +265,10 @@ export const AnnouncementsPage: React.FC = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+              role="dialog"
+              ref={dialogRef}
+              aria-modal="true"
+              aria-labelledby="announcement-draft-heading"
             >
               <div className="p-8 border-b border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -241,22 +276,25 @@ export const AnnouncementsPage: React.FC = () => {
                     <Bell className="w-6 h-6 text-slate-600" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-slate-800 tracking-tight">New Broadcast</h2>
-                    <p className="text-[0.625rem] font-bold text-slate-400 uppercase tracking-widest">Create a school-wide update</p>
+                    <h2 id="announcement-draft-heading" className="text-xl font-bold text-slate-800 tracking-tight">New announcement draft</h2>
+                    <p className="text-sm text-slate-500">Saved on this device only</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setIsAddModalOpen(false)}
                   className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                  aria-label="Close draft"
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
-              <form onSubmit={handleAddAnnouncement} className="p-8 space-y-6">
+              <form onSubmit={handleAddAnnouncement} className="p-6 space-y-5 max-h-[65vh] overflow-y-auto">
                 <div className="space-y-2">
-                  <label className="text-[0.6875rem] font-bold text-slate-400 uppercase tracking-widest ml-1">Title</label>
+                  <label htmlFor="draft-title" className="text-sm font-semibold">Title</label>
                   <input
+                    id="draft-title"
+                    autoFocus
                     type="text"
                     required
                     value={formData.title}
@@ -267,8 +305,9 @@ export const AnnouncementsPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[0.6875rem] font-bold text-slate-400 uppercase tracking-widest ml-1">Content</label>
+                  <label htmlFor="draft-content" className="text-sm font-semibold">Announcement</label>
                   <textarea
+                    id="draft-content"
                     required
                     rows={5}
                     value={formData.content}
@@ -281,12 +320,14 @@ export const AnnouncementsPage: React.FC = () => {
                 <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                   <button
                     type="button"
+                    aria-label="Pin draft to top"
+                    aria-pressed={formData.isPinned}
                     onClick={() => setFormData({ ...formData, isPinned: !formData.isPinned })}
                     className={`w-12 h-6 rounded-full relative transition-colors ${formData.isPinned ? 'bg-emerald-500' : 'bg-slate-200'}`}
                   >
                     <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.isPinned ? 'left-7' : 'left-1'}`} />
                   </button>
-                  <span className="text-xs font-bold text-slate-600">Pin to top of portal</span>
+                  <span className="text-sm text-slate-600">Pin to top of drafts</span>
                 </div>
 
                 <div className="flex gap-4 pt-4">
@@ -303,7 +344,7 @@ export const AnnouncementsPage: React.FC = () => {
                     className="flex-3 py-4 bg-slate-900 text-white font-bold text-sm rounded-2xl hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200 disabled:opacity-50"
                   >
                     {isSubmitting ? <Spinner size="sm" /> : <Plus className="w-5 h-5" />}
-                    Post Announcement
+                    Save draft
                   </button>
                 </div>
               </form>
@@ -314,8 +355,8 @@ export const AnnouncementsPage: React.FC = () => {
 
       <ConfirmDialog 
         isOpen={!!announcementToDelete}
-        title="Delete Announcement?"
-        message="This action will permanently remove this broadcast from all portals. Are you sure?"
+        title="Delete draft?"
+        message="This removes the saved draft from this browser. It has not been sent to anyone."
         onConfirm={handleDelete}
         onClose={() => setAnnouncementToDelete(null)}
       />
