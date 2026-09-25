@@ -31,6 +31,13 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--brand-on-secondary', brandContrast(b.secondaryColor || GLOBEPEN_DEFAULTS.secondaryColor));
     root.classList.toggle('school-portal', Boolean(b.schoolId));
 
+    // Browser chrome follows the portal's saved brand colour. This is runtime
+    // CSS presentation only — nothing here is cached or used for tenant auth.
+    const themeColor = b.brandColor || GLOBEPEN_DEFAULTS.brandColor;
+    document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
+      meta.setAttribute('content', themeColor);
+    });
+
     // Update document title
     if (b.schoolId && b.schoolName) {
       document.title = `${b.portalTitle || b.schoolName} — GlobePen`;
@@ -47,6 +54,25 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setBranding(b);
         applyBrandTheme(b);
         setError(null);
+        // Install metadata: a school portal points at the server-generated
+        // manifest, which resolves the tenant from the trusted hostname
+        // server-side (never a client-supplied id). Falls back silently to the
+        // platform manifest when the endpoint is unavailable.
+        if (b.schoolId) {
+          try {
+            const manifestResponse = await fetch('/api/schools/manifest', { cache: 'no-store' });
+            if (manifestResponse.ok) {
+              const manifest = await manifestResponse.json();
+              if (manifest?.name) {
+                document.querySelector<HTMLLinkElement>('link[rel="manifest"]')?.setAttribute('href', '/api/schools/manifest');
+              }
+            }
+          } catch {
+            // Older server builds have no manifest endpoint: keep /manifest.webmanifest.
+          }
+        } else {
+          document.querySelector<HTMLLinkElement>('link[rel="manifest"]')?.setAttribute('href', '/manifest.webmanifest');
+        }
       }
     } catch (err) {
       setError('This school portal could not be loaded. Check the address and try again.');

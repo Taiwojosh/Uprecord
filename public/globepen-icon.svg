@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" role="img" aria-label="GlobePen">
+  <!-- Official GlobePen mark, extracted verbatim from src/components/ui/Logo.tsx.
+       CSS custom properties are replaced by the GlobePen default brand colours. -->
+  <defs>
+    <linearGradient id="globeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+    <linearGradient id="nibGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#475569" />
+    </linearGradient>
+  </defs>
+  <circle cx="50" cy="50" r="40" stroke="url(#globeGrad)" stroke-width="6" stroke-dasharray="180 50" opacity="0.9" />
+  <ellipse cx="50" cy="50" rx="40" ry="18" stroke="url(#globeGrad)" stroke-width="4" stroke-dasharray="120 70" transform="rotate(-25 50 50)" opacity="0.6" />
+  <path d="M 50 20 L 68 45 L 56 50 L 52 75 L 48 75 L 44 50 L 32 45 Z" fill="url(#nibGrad)" transform="rotate(35 50 50)" />
+  <circle cx="50" cy="48" r="3.5" fill="#06B6D4" transform="rotate(35 50 50)" />
+</svg>

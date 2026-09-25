@@ -396,6 +396,50 @@ router.post('/custom-domain/verify', authenticate, enforceTenant, requireAdmin, 
   }
 });
 
+// ─── GET /api/schools/manifest ───────────────────────────────────────
+// Install metadata for the current host. Tenant identity comes from the
+// server-side hostname resolution (same trust path as /branding) — never from
+// a client-supplied identifier. Only public branding fields are exposed.
+// Icons are static GlobePen platform assets; no tenant data is involved.
+// Served no-store so a cached manifest can never attach one school's identity
+// to another host.
+router.get('/manifest', async (req: Request, res: Response) => {
+  try {
+    const school = req.resolvedSchool;
+    if (!school) {
+      res.status(404).json({ error: 'No school portal for this host.' });
+      return;
+    }
+
+    const name = school.name || 'School Portal';
+    const manifest = {
+      id: '/',
+      name,
+      short_name: name.slice(0, 12),
+      description: school.slogan || `${name} portal`,
+      start_url: '/',
+      scope: '/',
+      display: 'standalone',
+      background_color: '#FFFFFF',
+      theme_color: school.brandColor || '#1E293B',
+      lang: 'en',
+      dir: 'ltr',
+      icons: [
+        { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      ],
+    };
+
+    res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(manifest);
+  } catch (err) {
+    console.error('[School Manifest Error]', err);
+    res.status(500).json({ error: 'Failed to build install manifest.' });
+  }
+});
+
 // ─── DELETE /api/schools/custom-domain ───────────────────────────────
 // Removes custom domain registration and resets verification state.
 

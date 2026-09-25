@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>GlobePen — Offline</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+        background: #f8fafc; color: #1e293b; padding: 24px; text-align: center;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background: #020617; color: #f8fafc; }
+      }
+      .card {
+        max-width: 30rem; width: 100%; background: #ffffff; border: 1px solid #e2e8f0;
+        border-radius: 18px; padding: 32px 28px; box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+      }
+      @media (prefers-color-scheme: dark) {
+        .card { background: #0f172a; border-color: #1e293b; }
+      }
+      .mark { width: 56px; height: 56px; margin: 0 auto 18px; display: block; }
+      h1 { font-size: 1.25rem; font-weight: 800; margin: 0 0 10px; letter-spacing: -0.01em; }
+      p { font-size: 0.9rem; line-height: 1.6; color: #475569; margin: 0 0 22px; }
+      @media (prefers-color-scheme: dark) { p { color: #cbd5e1; } }
+      button {
+        appearance: none; border: 0; cursor: pointer; width: 100%; padding: 12px 18px;
+        border-radius: 12px; background: #1e293b; color: #f8fafc; font-weight: 700; font-size: 0.9rem;
+      }
+      button:hover { background: #0f172a; }
+      .hint { margin-top: 16px; font-size: 0.75rem; color: #64748b; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <svg class="mark" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#2563EB" /><stop offset="100%" stop-color="#06B6D4" />
+          </linearGradient>
+        </defs>
+        <circle cx="50" cy="50" r="40" stroke="url(#g)" stroke-width="6" stroke-dasharray="180 50" opacity="0.9" />
+        <ellipse cx="50" cy="50" rx="40" ry="18" stroke="url(#g)" stroke-width="4" stroke-dasharray="120 70" transform="rotate(-25 50 50)" opacity="0.6" />
+        <path d="M 50 20 L 68 45 L 56 50 L 52 75 L 48 75 L 44 50 L 32 45 Z" fill="#1E293B" transform="rotate(35 50 50)" />
+      </svg>
+      <h1>You're offline</h1>
+      <p>
+        GlobePen needs a connection to load live school data — students, results and registry records are never
+        stored offline. You can keep reading this page; everything else will come back when you reconnect.
+      </p>
+      <button onclick="location.reload()">Try again</button>
+      <p class="hint">Tip: unsaved work in open forms is kept in your browser — reconnect before navigating away.</p>
+    </main>
+  </body>
+</html>

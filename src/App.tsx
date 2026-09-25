@@ -43,6 +43,8 @@ import { AccountCreatorPage } from './pages/AccountCreatorPage';
 import { SchoolHistoryPage } from './pages/SchoolHistoryPage';
 import { RegistryPage } from './pages/RegistryPage';
 import { LandingPage } from './pages/LandingPage';
+import { MobileComingSoonPage } from './pages/MobileComingSoonPage';
+import { UpdateBanner } from './components/ui/UpdateBanner';
 // WirelessSqliteTestPage removed
 
 // Auth Guard Component
@@ -116,6 +118,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <UpdateBanner />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -164,6 +167,7 @@ export default function App() {
 
         <Route path="/license" element={<LicensePage />} />
         <Route path="/" element={<LandingPage />} />
+        <Route path="/mobile" element={<MobileComingSoonPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ErrorBoundary>

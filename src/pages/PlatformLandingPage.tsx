@@ -10,6 +10,9 @@ export const PlatformLandingPage: React.FC = () => {
           <span className="text-xl font-bold tracking-wide text-indigo-300">GlobePen</span>
         </div>
         <div className="flex gap-4 items-center">
+          <a href="/mobile" className="text-white/70 hover:text-white transition text-sm">
+            Mobile App
+          </a>
           <a href="/login" className="text-white/70 hover:text-white transition text-sm">Sign In</a>
           <a
             href="https://demo.ifyspace.tech/login"
@@ -60,7 +63,10 @@ export const PlatformLandingPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="border-t border-white/10 py-8 text-center text-white/30 text-sm">
-        © {new Date().getFullYear()} GlobePen · <a href="https://demo.ifyspace.tech/login" className="hover:text-white/60 transition">Explore the demo</a>
+        © {new Date().getFullYear()} GlobePen ·{' '}
+        <a href="/mobile" className="hover:text-white/60 transition">Mobile App — Coming Soon</a>
+        {' · '}
+        <a href="https://demo.ifyspace.tech/login" className="hover:text-white/60 transition">Explore the demo</a>
       </footer>
     </div>
   );
