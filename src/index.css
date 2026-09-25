@@ -143,6 +143,20 @@
   --color-border-strong: var(--app-border-strong);
   --color-muted: var(--app-text-subtle);
   --color-muted-foreground: var(--app-text-muted);
+
+  /* School identity — semantic names for school-branded surfaces.
+     Never used for platform chrome. Values are written by BrandContext. */
+  --color-school-primary: var(--brand-primary);
+  --color-school-secondary: var(--brand-secondary);
+  --color-on-school-primary: var(--brand-on-primary);
+  --color-on-school-secondary: var(--brand-on-secondary);
+
+  /* Status surfaces for alerts, badges and destructive actions. */
+  --color-danger: var(--app-danger);
+  --color-danger-foreground: #ffffff;
+  --color-success: var(--app-success);
+  --color-warning: var(--app-warning);
+  --color-info: var(--app-info);
   
   --color-blue-50: var(--blue-50);
   --color-blue-100: var(--blue-100);

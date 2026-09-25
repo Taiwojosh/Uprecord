@@ -272,7 +272,13 @@ export const AppLayout: React.FC = () => {
   };
 
   return (
-    <div data-school-workspace className="flex h-screen bg-[#F8F9FA] dark:bg-slate-950 overflow-hidden font-sans text-gray-900 dark:text-slate-100 transition-colors duration-200">
+    <div data-school-workspace className="flex h-screen bg-[var(--app-bg)] dark:bg-[var(--app-bg)] overflow-hidden font-sans text-[var(--app-text)] dark:text-slate-100 transition-colors duration-200">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:rounded-xl focus:bg-[var(--app-surface)] focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-[var(--app-text)]"
+      >
+        Skip to main content
+      </a>
       {/* Desktop Sidebar with collapse transition */}
       <motion.div
         animate={{ 
@@ -298,7 +304,7 @@ export const AppLayout: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div id="main-content" className="flex-1 flex flex-col min-w-0">
         {/* Header with toggle-active slide-collapse animation */}
         <motion.header 
           animate={{ 
@@ -309,7 +315,7 @@ export const AppLayout: React.FC = () => {
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
           className="h-20 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between px-6 lg:px-10 shrink-0 z-30 shadow-sm shadow-gray-50/50 dark:shadow-slate-950/20 transition-colors duration-200 overflow-hidden"
         >
-          <div className="flex items-center gap-6 flex-1">
+          <div className="flex items-center gap-3 sm:gap-6 flex-1 min-w-0">
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="p-2.5 rounded-xl text-gray-400 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 lg:hidden transition-colors"
@@ -318,21 +324,18 @@ export const AppLayout: React.FC = () => {
               <Menu className="w-6 h-6" />
             </button>
             
-            {/* School / Portal Identifier */}
-            <div className="hidden sm:flex items-center gap-3">
-              <Logo size={36} variant="icon" />
-              <div>
-                <h1 className="text-sm font-black text-gray-900 dark:text-slate-100 tracking-tight leading-none truncate max-w-[220px]">
+            {/* Desktop identity lives in the sidebar; mobile keeps it here. */}
+            <div className="flex lg:hidden items-center gap-3 min-w-0">
+              <div className="shrink-0"><Logo size={32} variant="icon" /></div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 leading-snug truncate max-w-[220px]" title={isSchoolPortal ? (branding.portalTitle || branding.schoolName) : 'GlobePen'}>
                   {isSchoolPortal ? (branding.portalTitle || branding.schoolName) : 'GlobePen Hub'}
-                </h1>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
-                  {isSchoolPortal ? (branding.schoolName || 'School Portal') : 'Platform Operations'}
                 </p>
               </div>
             </div>
 
             {/* Top Bar Global Search Container */}
-            <div className="relative max-w-md w-full ml-6 mr-8 hidden md:block">
+            <div className="relative max-w-md w-full mr-4 hidden lg:block">
               <div className={`flex items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-slate-800 rounded-2xl border transition-all duration-300 ${searchFocused ? 'bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 ring-4 ring-blue-500/5 shadow-sm shadow-gray-900/10' : 'border-transparent dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800/70'}`}>
                  <Search size={18} className={`${searchFocused ? 'text-blue-500' : 'text-gray-400 dark:text-slate-500'}`} />
                  <input 

@@ -25,10 +25,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
       <div className="flex items-start gap-4">
         {Icon && (
           <div 
-            className="w-12 h-12 bg-white rounded-md shadow-card border border-border flex items-center justify-center text-primary shrink-0"
+            className="w-12 h-12 bg-[var(--app-surface)] rounded-xl border border-[var(--app-border)] shadow-[var(--shadow-card)] flex items-center justify-center text-[var(--app-text)] shrink-0"
             style={iconStyle}
           >
-            <Icon className="w-6 h-6" strokeWidth={2} />
+            <Icon className="w-6 h-6" strokeWidth={2} aria-hidden="true" />
           </div>
         )}
         <div className="flex flex-col">

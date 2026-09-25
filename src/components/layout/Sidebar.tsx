@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -136,6 +136,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   const currentNavGroups = getNavGroups();
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -165,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto py-6 px-0 space-y-6 no-scrollbar">
+          <nav aria-label="Primary navigation" className="flex-1 overflow-y-auto py-6 px-0 space-y-6 no-scrollbar">
             {currentNavGroups.map((group) => (
               <div key={group.title}>
                 <h3 className="px-6 text-[0.6875rem] font-semibold text-slate-400 uppercase tracking-[0.1em] mb-3">

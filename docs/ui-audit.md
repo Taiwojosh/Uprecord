@@ -173,8 +173,33 @@ deployment change is proposed here.
 4. Login → Devikys landing → Dashboard → Registry → Settings & branding →
    Historical Records → report preview, in that order, using the primitives.
 
-Each group gates on `npm test`, `npx tsc --noEmit`, `npm run build`.
-Visual verification is by built-CSS token assertions and
-`react-dom/server` structural checks, because no headed browser is available
-in this environment.
+## Status after this pass
+
+Implemented and verified:
+- Token layer (`--app-*` / `--brand-*` split, semantic `--color-school-*`,
+  focus ring) in `src/index.css`.
+- Primitives in `src/components/ui/`: `Button`, `Card`, `Field` (`Input` /
+  `Select` / `Textarea`), `Alert`, `Skeleton`, upgraded `EmptyState`,
+  `Modal` labelling + `aria-labelledby` + `z-[120]`, `ConfirmDialog` on
+  `Button` variants.
+- Shell: skip link, token page background, sidebar `aria-label` + Escape
+  close, `main-content` anchor target.
+- Screens: LoginPage (touch target, busy, token surfaces), DashboardPage
+  (icons, skeletons, alerts, hover/focus), RegistryPage (primitives,
+  skeleton/empty/alert states), SchoolHistoryPage (tokens, sticky header,
+  `scope="col"`, empty state, pagination buttons).
+- Docs: `docs/design-system.md` and this file.
+
+Deferred (documented, not regressed): the `!important` spacing/radius caps
+(`p-8/p-10/rounded-[2.5rem]`, hairline borders), the blue→crimson utility
+remap, the two `gray`/`slate` neutral scales, the brittle positional dark-mode
+selectors, Settings tabs, and the report templates. Removing the `!important`
+caps safely requires recomputing every screen's padding and is a separate
+visual pass with a real browser.
+
+Visual verification is limited in this environment: no headed browser is
+available, so screens were verified by source review, by the typecheck/build
+gates, by the pinned `brandContrast` unit test, and by built-CSS token
+presence. A human should open the app shell, Login, Dashboard, Registry and
+Historical Records on desktop and mobile before this is deployed.
 
