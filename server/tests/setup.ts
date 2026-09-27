@@ -4,6 +4,9 @@ import { beforeAll, afterAll } from 'vitest';
 export async function resetTestDatabase() {
   // Delete in order to avoid foreign key constraints
   try {
+    await prisma.cbtAttempt.deleteMany({});
+    await prisma.cbtAssessment.deleteMany({});
+    await prisma.liveLesson.deleteMany({});
     await prisma.grade.deleteMany({});
     await prisma.dailyAttendance.deleteMany({});
     await prisma.attendance.deleteMany({});

@@ -10,6 +10,52 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Tenant and membership ownership are checked on every CBT route.
+model CbtAssessment {
+  id String @id @default(cuid())
+  schoolId String
+  teacherId Int
+  classId Int
+  title String
+  durationMinutes Int
+  questions String
+  published Boolean @default(false)
+  createdAt DateTime @default(now())
+  attempts CbtAttempt[]
+  @@index([schoolId, classId])
+}
+
+model CbtAttempt {
+  id String @id @default(cuid())
+  assessmentId String
+  assessment CbtAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  schoolId String
+  studentId Int
+  startedAt DateTime @default(now())
+  expiresAt DateTime
+  answers String @default("{}")
+  submittedAt DateTime?
+  score Int?
+  @@unique([assessmentId, studentId])
+  @@index([schoolId, studentId])
+}
+
+model LiveLesson {
+  id String @id @default(cuid())
+  schoolId String
+  classId Int
+  teacherId Int
+  title String
+  startsAt DateTime
+  durationMinutes Int
+  mode String
+  meetingUrl String?
+  roomName String @unique @default(cuid())
+  status String @default("scheduled")
+  createdAt DateTime @default(now())
+  @@index([schoolId, classId])
+}
+
 // Private import receipt prevents accidentally applying a legacy backup twice.
 model LegacyImportReceipt {
   schoolId String

@@ -11,6 +11,8 @@ import classRoutes from './routes/classes.js';
 import settingsRoutes from './routes/settings.js';
 import schoolsRoutes from './routes/schools.js';
 import aiRoutes from './routes/ai.js';
+import cbtRoutes from './routes/cbt.js';
+import liveRoutes from './routes/live.js';
 import { corsMiddleware } from './middleware/cors.js';
 import { csrfProtection } from './middleware/csrf.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -73,6 +75,8 @@ app.use('/api/students', studentRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/cbt', cbtRoutes);
+app.use('/api/live', liveRoutes);
 
 // ─── Global Error Handler (must be last) ─────────────────────────────
 

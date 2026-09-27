@@ -22,7 +22,9 @@ import {
   History,
   LayoutGrid,
   LogOut,
-  User
+  User,
+  Video,
+  HelpCircle
 } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 
@@ -55,6 +57,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, mobile = fals
           title: 'Student Portal',
           items: [
             { to: '/student-portal', label: 'My Portal', icon: LayoutDashboard },
+            { to: '/cbt', label: 'CBT Assessments', icon: HelpCircle },
+            { to: '/live-classroom', label: 'Live Classroom', icon: Video },
             { to: '/lesson-notes', label: 'Read Note', icon: BookOpen },
             { to: '/report-cards', label: 'View Results', icon: FileText },
           ]
@@ -78,6 +82,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, mobile = fals
       }
 
       teacherItems.push({ to: '/data-entry', label: 'Enter Scores', icon: ClipboardList });
+      teacherItems.push({ to: '/cbt', label: 'CBT Assessments', icon: HelpCircle });
+      teacherItems.push({ to: '/live-classroom', label: 'Live Classroom', icon: Video });
       teacherItems.push({ to: '/lesson-planner', label: 'Lesson Planner', icon: BookOpenCheck });
       teacherItems.push({ to: '/attendance', label: 'Attendance', icon: Clock });
 

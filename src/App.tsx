@@ -33,6 +33,8 @@ import { BulkImportPage } from './pages/BulkImportPage';
 import { ReportCardsPage } from './pages/ReportCardsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { CbtPage } from './pages/CbtPage';
+import { LiveClassroomPage } from './pages/LiveClassroomPage';
 import { LessonNotesPage } from './pages/LessonNotesPage';
 import { BackupPage } from './pages/BackupPage';
 import { LicensePage } from './pages/LicensePage';
@@ -142,6 +144,8 @@ export default function App() {
           <Route path="/subjects" element={<SubjectsPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/attendance" element={<AttendancePage />} />
+          <Route path="/cbt" element={<CbtPage />} />
+          <Route path="/live-classroom" element={<LiveClassroomPage />} />
           <Route path="/communication" element={<CommunicationPage />}>
             <Route index element={<Navigate to="announcements" replace />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
