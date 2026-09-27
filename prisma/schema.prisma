@@ -158,6 +158,13 @@ model Subject {
   teacherId   Int?
   classId     Int?
 
+  // Legacy client fidelity: the offline client stores these as arrays.
+  // Persisted as JSON strings to match the existing caScores/caComponents convention.
+  departmentIds       String? // JSON stringified number[]
+  coreLevels          String? // JSON stringified ('Primary' | 'junior' | 'senior' | 'Secondary')[]
+  classIds            String? // JSON stringified number[]
+  assistantTeacherIds String? // JSON stringified number[]
+
   // Tenant
   schoolId String
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -167,6 +174,7 @@ model Subject {
   curriculum Curriculum[]
   lessonNotes LessonNote[]
 
+  @@unique([schoolId, subjectName])
   @@index([schoolId])
 }
 
@@ -207,6 +215,7 @@ model TraitDefinition {
 
   traitGrades TraitGrade[]
 
+  @@unique([schoolId, traitName])
   @@index([schoolId])
 }
 
@@ -446,6 +455,8 @@ model SchoolSettings {
   autoHideCumulativeForEarlierTerms Boolean @default(false)
   enableDataOverride       Boolean @default(false)
   publishedTerms           String? // JSON stringified string[]
+  holidayDates             String? // JSON stringified string[]
+  holidayNames             String? // JSON stringified Record<string, string>
   restrictTeacherActionsNoAttendance Boolean @default(false)
   allowTeachersViewFeeStatus Boolean @default(false)
   restrictUnpaidStudentsAccess Boolean @default(false)

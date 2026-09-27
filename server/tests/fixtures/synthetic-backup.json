@@ -1,0 +1,42 @@
+{
+  "settings": [
+    {
+      "schoolName": "Devickys Gem Schools",
+      "schoolSlogan": "Knowledge is Power",
+      "address": "123 Education Lane",
+      "brandColor": "#00b32d"
+    }
+  ],
+  "classes": [
+    {
+      "id": 1,
+      "className": "Grade 1",
+      "level": "primary"
+    }
+  ],
+  "subjects": [
+    {
+      "id": 1,
+      "subjectName": "Mathematics",
+      "isCore": true
+    }
+  ],
+  "traits": [
+    {
+      "id": 1,
+      "traitName": "Punctuality",
+      "category": "affective"
+    }
+  ],
+  "students": [
+    {
+      "id": 1,
+      "admissionNumber": "TEST-001",
+      "fullName": "Test Student",
+      "classId": 1
+    }
+  ],
+  "grades": [],
+  "traitGrades": [],
+  "attendance": []
+}
