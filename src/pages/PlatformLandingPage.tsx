@@ -172,7 +172,7 @@ export const PlatformLandingPage: React.FC = () => {
 
             {/* Subtitle */}
             <p className="mt-6 text-base sm:text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-2xl mx-auto">
-              GlobePen provides primary and secondary schools with dedicated white-label portals, verified registries for classes and faculty, automated term reporting, and tenant-isolated operations.
+              SeferNote provides primary and secondary schools with dedicated white-label portals, verified registries for classes and faculty, automated term reporting, and tenant-isolated operations.
             </p>
 
             {/* Call to Action Actions */}
@@ -381,7 +381,7 @@ export const PlatformLandingPage: React.FC = () => {
               Built for institutional rigor.
             </p>
             <p className="mt-3 text-base text-slate-600 dark:text-slate-400">
-              GlobePen removes administrative friction with dedicated tools for rosters, scoring, custom domains, and end-of-term reporting.
+              SeferNote removes administrative friction with dedicated tools for rosters, scoring, custom domains, and end-of-term reporting.
             </p>
           </div>
 
@@ -481,7 +481,7 @@ export const PlatformLandingPage: React.FC = () => {
               One reliable engine. Completely isolated schools.
             </p>
             <p className="mt-3 text-base text-slate-600 dark:text-slate-400">
-              GlobePen separates platform governance from individual school workspaces, ensuring high availability without data entanglement.
+              SeferNote separates platform governance from individual school workspaces, ensuring high availability without data entanglement.
             </p>
           </div>
 
@@ -570,7 +570,7 @@ export const PlatformLandingPage: React.FC = () => {
                 </span>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl">
-                GlobePen is currently installable on iOS and Android as a Progressive Web App. Dedicated branded school applications and a Kotlin-based companion client are planned for later release.
+                SeferNote is currently installable on iOS and Android as a Progressive Web App. Dedicated branded school applications and a Kotlin-based companion client are planned for later release.
               </p>
             </div>
             <div className="shrink-0">
@@ -591,7 +591,7 @@ export const PlatformLandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              Ready to explore GlobePen?
+              Ready to explore SeferNote?
             </h2>
             <p className="text-base text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl mx-auto">
               Test our fully interactive demonstration environment featuring complete student registers, sample grading sheets, and report card generation.
@@ -631,7 +631,7 @@ export const PlatformLandingPage: React.FC = () => {
           </div>
           
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left text-slate-400 dark:text-slate-500">
-            <p>© {new Date().getFullYear()} GlobePen. Multi-School Management Platform.</p>
+            <p>© {new Date().getFullYear()} SeferNote. Multi-School Management Platform.</p>
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
               <span>Production Pilot Environment</span>

@@ -70,7 +70,7 @@ function formatPublicBranding(school: School): PublicBranding {
     contactPhone: school.contactPhone,
     portalTitle: school.portalTitle || `${school.name} Portal`,
     customDomain: school.customDomainVerified ? school.customDomain : null,
-    poweredBy: 'GlobePen',
+    poweredBy: 'SeferNote',
   };
 }
 
@@ -96,7 +96,7 @@ router.get('/branding', async (req: Request, res: Response) => {
       return;
     }
 
-    // 2. If on central platform host, return GlobePen product branding
+    // 2. If on central platform host, return SeferNote product branding
     // Optionally allows superadmins or public discovery of a school by slug ONLY on platform host
     const requestedSlug = typeof req.query.slug === 'string' ? req.query.slug.toLowerCase().trim() : null;
     if (requestedSlug) {
@@ -110,11 +110,11 @@ router.get('/branding', async (req: Request, res: Response) => {
       }
     }
 
-    // Fallback: GlobePen Default Platform Branding
+    // Fallback: SeferNote Default Platform Branding
     res.json({
       branding: {
         schoolId: null,
-        schoolName: 'GlobePen',
+        schoolName: 'SeferNote',
         slug: null,
         slogan: 'School Management & Academic Operations',
         logoUrl: null,
@@ -122,9 +122,9 @@ router.get('/branding', async (req: Request, res: Response) => {
         secondaryColor: '#1E293B',
         contactEmail: null,
         contactPhone: null,
-        portalTitle: 'GlobePen Portal',
+        portalTitle: 'SeferNote Portal',
         customDomain: null,
-        poweredBy: 'GlobePen',
+        poweredBy: 'SeferNote',
       },
     });
   } catch (err) {
@@ -400,7 +400,7 @@ router.post('/custom-domain/verify', authenticate, enforceTenant, requireAdmin, 
 // Install metadata for the current host. Tenant identity comes from the
 // server-side hostname resolution (same trust path as /branding) — never from
 // a client-supplied identifier. Only public branding fields are exposed.
-// Icons are static GlobePen platform assets; no tenant data is involved.
+// Icons are static SeferNote platform assets; no tenant data is involved.
 // Served no-store so a cached manifest can never attach one school's identity
 // to another host.
 router.get('/manifest', async (req: Request, res: Response) => {

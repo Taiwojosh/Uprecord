@@ -42,9 +42,9 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Update document title
     if (b.schoolId && b.schoolName) {
-      document.title = `${b.portalTitle || b.schoolName} — GlobePen`;
+      document.title = `${b.portalTitle || b.schoolName} — SeferNote`;
     } else {
-      document.title = 'GlobePen — School Management Platform';
+      document.title = 'SeferNote — School Management Platform';
     }
   }, []);
 

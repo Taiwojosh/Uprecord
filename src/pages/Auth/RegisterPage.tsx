@@ -60,7 +60,7 @@ export function RegisterPage() {
               </div>
               <h2 className="text-lg font-black text-slate-900">School Portal Detected</h2>
               <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                You are currently accessing <strong>{branding.schoolName || 'a school portal'}</strong>. New school registrations must be created through the main GlobePen platform.
+                You are currently accessing <strong>{branding.schoolName || 'a school portal'}</strong>. New school registrations must be created through the main SeferNote platform.
               </p>
               <div className="pt-2">
                 <Link

@@ -20,7 +20,7 @@ export const PortalLoadingScreen: React.FC<PortalLoadingScreenProps> = ({
       aria-live="polite"
     >
       <div className="w-full max-w-sm flex flex-col items-center text-center space-y-6">
-        {/* GlobePen Emblem Mark */}
+        {/* SeferNote Emblem Mark */}
         <div className="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-white border border-slate-200/90 shadow-xs">
           <svg
             viewBox="0 0 100 100"
@@ -93,7 +93,7 @@ export const PortalLoadingScreen: React.FC<PortalLoadingScreenProps> = ({
         {/* Security badge */}
         <div className="pt-2 flex items-center gap-1.5 text-[0.6875rem] font-medium text-slate-400">
           <Shield className="w-3 h-3 text-slate-400" aria-hidden="true" />
-          <span>GlobePen Multi-Tenant Boundary</span>
+          <span>SeferNote Multi-Tenant Boundary</span>
         </div>
       </div>
     </main>

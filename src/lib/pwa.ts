@@ -1,5 +1,5 @@
 /*
- * GlobePen PWA plumbing: service-worker registration, update detection and
+ * SeferNote PWA plumbing: service-worker registration, update detection and
  * install-prompt handling. Everything here is best-effort — the app must work
  * perfectly when service workers are unsupported (older Safari, private mode).
  */

@@ -54,7 +54,7 @@ export function LiveClassroomPage() {
       <div className="grid gap-4 sm:grid-cols-2"><label className="block space-y-1"><span>Class</span><select className={field} name="classId" required><option value="">Choose a class</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.className}</option>)}</select></label>
         <label className="block space-y-1"><span>Start time (your local time)</span><input className={field} name="startsAt" type="datetime-local" required /></label></div>
       <div className="grid gap-4 sm:grid-cols-2"><label className="block space-y-1"><span>Duration in minutes</span><input className={field} name="durationMinutes" type="number" min={5} max={240} defaultValue={40} required /></label>
-        <label className="block space-y-1"><span>Meeting type</span><select className={field} value={mode} onChange={e => setMode(e.target.value)}><option value="external">Google Meet or Zoom</option><option value="embedded" disabled={!data.embeddedAvailable}>Video inside GlobePen{!data.embeddedAvailable ? ' — setup pending' : ''}</option></select></label></div>
+        <label className="block space-y-1"><span>Meeting type</span><select className={field} value={mode} onChange={e => setMode(e.target.value)}><option value="external">Google Meet or Zoom</option><option value="embedded" disabled={!data.embeddedAvailable}>Video inside SeferNote{!data.embeddedAvailable ? ' — setup pending' : ''}</option></select></label></div>
       {mode === 'external' && <label className="block space-y-1"><span>Meeting link</span><input className={field} name="meetingUrl" type="url" required placeholder="https://meet.google.com/…" /><span className="block text-xs text-slate-500">Create the meeting in Google Meet or Zoom, then paste its participant link here.</span></label>}
       {!data.classes.length && <p role="status">An administrator needs to assign you a class in the School Registry first.</p>}
       <div className="flex gap-3"><button className={button} disabled={busy || !data.classes.length}>{busy ? 'Saving…' : 'Save class'}</button><button type="button" className="px-4 py-2 text-sm" onClick={() => setAdding(false)}>Cancel</button></div>
@@ -64,7 +64,7 @@ export function LiveClassroomPage() {
       <div className="flex items-start justify-between gap-3"><h2 className="font-semibold break-words">{lesson.title}</h2><span className="rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-1 text-xs capitalize">{lesson.status}</span></div>
       <p className="text-sm text-slate-500 dark:text-slate-400">{data.classes.find(c => c.id === lesson.classId)?.className} · {lesson.durationMinutes} minutes</p>
       <p className="text-sm">{new Date(lesson.startsAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
-      <p className="text-xs text-slate-500 dark:text-slate-400">{lesson.mode === 'embedded' ? 'Video inside GlobePen' : 'Google Meet / Zoom'}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">{lesson.mode === 'embedded' ? 'Video inside SeferNote' : 'Google Meet / Zoom'}</p>
       <div className="flex flex-wrap gap-2">
         {data.canManage && lesson.status === 'scheduled' && <button disabled={busy} className={button} onClick={() => run(async () => { await api.post(`/live/${lesson.id}/start`); await load(); })}>Start class</button>}
         {lesson.status === 'live' && <button disabled={busy} className={button} onClick={() => join(lesson)}>Join class</button>}

@@ -6,7 +6,7 @@ import prisma from '../src/lib/prisma.js';
 import { resetTestDatabase } from './setup.js';
 import { seedSuperadmin } from '../src/scripts/seedSuperadmin.js';
 
-describe('GlobePen Multi-Tenancy, Hostname Resolution & Branding Suite', () => {
+describe('SeferNote Multi-Tenancy, Hostname Resolution & Branding Suite', () => {
   afterEach(() => vi.restoreAllMocks());
   let schoolAlpha: any;
   let schoolBeta: any;
@@ -93,7 +93,7 @@ describe('GlobePen Multi-Tenancy, Hostname Resolution & Branding Suite', () => {
 
       // Server should resolve as platform host 'localhost', not the spoofed header
       expect(res.status).toBe(200);
-      expect(res.body.branding.schoolName).toBe('GlobePen');
+      expect(res.body.branding.schoolName).toBe('SeferNote');
     });
 
     it('Resolves school subdomain from Host header', async () => {
@@ -104,7 +104,7 @@ describe('GlobePen Multi-Tenancy, Hostname Resolution & Branding Suite', () => {
       expect(res.status).toBe(200);
       expect(res.body.branding.schoolId).toBe(schoolAlpha.id);
       expect(res.body.branding.schoolName).toBe('Alpha Academy');
-      expect(res.body.branding.poweredBy).toBe('GlobePen');
+      expect(res.body.branding.poweredBy).toBe('SeferNote');
     });
   });
 
@@ -119,7 +119,7 @@ describe('GlobePen Multi-Tenancy, Hostname Resolution & Branding Suite', () => {
       expect(b).toHaveProperty('schoolName');
       expect(b).toHaveProperty('brandColor');
       expect(b).toHaveProperty('portalTitle');
-      expect(b).toHaveProperty('poweredBy', 'GlobePen');
+      expect(b).toHaveProperty('poweredBy', 'SeferNote');
 
       // Must not leak private schema fields
       expect(b).not.toHaveProperty('domainVerificationToken');

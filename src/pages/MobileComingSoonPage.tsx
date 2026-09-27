@@ -7,15 +7,15 @@ import { Logo } from '../components/ui/Logo';
 const offerings = [
   {
     icon: Smartphone,
-    title: 'GlobePen Mobile',
-    body: 'One GlobePen application where staff, students and parents can access supported schools — timetable, results and notices in one place.',
-    points: ['One sign-in across supported schools', 'Built on the GlobePen platform', 'Consistent updates for every school'],
+    title: 'SeferNote Mobile',
+    body: 'One SeferNote application where staff, students and parents can access supported schools — timetable, results and notices in one place.',
+    points: ['One sign-in across supported schools', 'Built on the SeferNote platform', 'Consistent updates for every school'],
   },
   {
     icon: Store,
     title: 'Dedicated School Apps',
-    body: 'A school-branded application powered by the same GlobePen mobile foundation, shaped around each school’s identity.',
-    points: ['School-specific name and branding', 'Reusable GlobePen mobile base', 'Rolls out with each school, not before'],
+    body: 'A school-branded application powered by the same SeferNote mobile foundation, shaped around each school’s identity.',
+    points: ['School-specific name and branding', 'Reusable SeferNote mobile base', 'Rolls out with each school, not before'],
   },
 ];
 
@@ -26,7 +26,7 @@ export const MobileComingSoonPage: React.FC = () => {
     <div className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)] font-sans">
       <nav aria-label="Main" className="border-b border-[var(--app-border)]">
         <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between gap-4">
-          <a href="/" className="flex items-center gap-3 min-w-0" aria-label="GlobePen home">
+          <a href="/" className="flex items-center gap-3 min-w-0" aria-label="SeferNote home">
             <Logo size={34} />
           </a>
           <div className="flex items-center gap-3">
@@ -50,10 +50,10 @@ export const MobileComingSoonPage: React.FC = () => {
             Coming soon
           </p>
           <h1 className="mt-6 text-4xl md:text-6xl font-black tracking-tight text-[var(--app-text)] leading-tight">
-            GlobePen Mobile
+            SeferNote Mobile
           </h1>
           <p className="mt-5 text-lg md:text-xl text-[var(--app-text-muted)] max-w-2xl mx-auto leading-relaxed">
-            GlobePen for phones is on the way. Today, the full platform lives in the GlobePen web app — installable in one tap.
+            SeferNote for phones is on the way. Today, the full platform lives in the SeferNote web app — installable in one tap.
           </p>
         </section>
 
@@ -108,7 +108,7 @@ export const MobileComingSoonPage: React.FC = () => {
           className="mt-10 rounded-3xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 md:p-10 text-center"
         >
           <h2 className="text-2xl md:text-3xl font-black tracking-tight text-[var(--app-text)]">
-            Install the GlobePen Web App
+            Install the SeferNote Web App
           </h2>
           <p className="mt-3 text-sm md:text-base text-[var(--app-text-muted)] max-w-xl mx-auto leading-relaxed">
             The web app installs straight from the browser — same sign-in, same data, no store required.
@@ -118,21 +118,21 @@ export const MobileComingSoonPage: React.FC = () => {
           {isStandalone ? (
             <p className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[var(--app-success)]/10 border border-[var(--app-success)]/30 px-4 py-3 text-sm font-bold text-emerald-800 dark:text-emerald-100">
               <Check className="w-4 h-4" aria-hidden="true" />
-              You're running the installed GlobePen app.
+              You're running the installed SeferNote app.
             </p>
           ) : canInstall ? (
             <div className="mt-6">
               <Button size="lg" onClick={() => void promptInstall()}>
                 <Download className="w-4 h-4" aria-hidden="true" />
-                Install GlobePen
+                Install SeferNote
               </Button>
               <p className="mt-2 text-xs text-[var(--app-text-subtle)]">Installs to your home screen or desktop.</p>
             </div>
           ) : isIOS ? (
             <div className="mt-6 max-w-md mx-auto text-left rounded-2xl bg-[var(--app-surface-2)] border border-[var(--app-border)] p-5">
-              <p className="text-sm font-bold text-[var(--app-text)]">Add GlobePen to your iPhone or iPad</p>
+              <p className="text-sm font-bold text-[var(--app-text)]">Add SeferNote to your iPhone or iPad</p>
               <ol className="mt-3 space-y-2 text-sm text-[var(--app-text-muted)] list-decimal list-inside leading-relaxed">
-                <li>Open GlobePen in Safari.</li>
+                <li>Open SeferNote in Safari.</li>
                 <li>Tap the Share button.</li>
                 <li>Choose “Add to Home Screen”.</li>
               </ol>
@@ -140,7 +140,7 @@ export const MobileComingSoonPage: React.FC = () => {
           ) : (
             <p className="mt-6 text-sm text-[var(--app-text-subtle)]">
               Installation is available today in Chrome and Edge on desktop and Android. Every other browser keeps full
-              access to GlobePen in a tab — no separate app needed.
+              access to SeferNote in a tab — no separate app needed.
             </p>
           )}
 
@@ -149,19 +149,19 @@ export const MobileComingSoonPage: React.FC = () => {
               href="/login"
               className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-primary)] px-6 py-3 text-sm font-bold text-[var(--app-on-primary)] hover:bg-[var(--app-primary-hover)] transition-colors"
             >
-              Open GlobePen
+              Open SeferNote
               <ArrowRight className="w-4 h-4" aria-hidden="true" />
             </a>
             <a href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--app-text-muted)] hover:text-[var(--app-text)]">
               <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-              Back to GlobePen
+              Back to SeferNote
             </a>
           </div>
         </section>
       </main>
 
       <footer className="border-t border-[var(--app-border)] px-5 py-8 text-center text-sm text-[var(--app-text-subtle)]">
-        GlobePen — school management platform
+        SeferNote — school management platform
       </footer>
     </div>
   );

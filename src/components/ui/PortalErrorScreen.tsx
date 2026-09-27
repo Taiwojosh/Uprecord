@@ -93,7 +93,7 @@ export const PortalErrorScreen: React.FC<PortalErrorScreenProps> = ({
         {/* Trust & Boundary Footer */}
         <div className="pt-2 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[0.6875rem] text-slate-400">
           <ShieldAlert className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
-          <span>GlobePen Institutional Portal Verification</span>
+          <span>SeferNote Institutional Portal Verification</span>
         </div>
       </div>
     </main>

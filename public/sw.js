@@ -1,5 +1,5 @@
 /*
- * GlobePen service worker.
+ * SeferNote service worker.
  *
  * CACHING POLICY (school-management SaaS — tenant safety first):
  *   1. /api/* is NEVER intercepted. Every authenticated response (students,
@@ -13,8 +13,8 @@
  * Version bump: change SHELL_VERSION below whenever this file changes to force
  * every client to activate the new worker on its next visit.
  */
-const SHELL_CACHE = 'globepen-shell-v1';
-const ASSET_CACHE = 'globepen-assets-v1';
+const SHELL_CACHE = 'sefernote-shell-v1';
+const ASSET_CACHE = 'sefernote-assets-v1';
 const OFFLINE_URL = '/offline.html';
 
 // Cross-origin font hosts only; opaque font responses carry no school data.
@@ -37,7 +37,7 @@ self.addEventListener('activate', (event) => {
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter((k) => k.startsWith('globepen-') && k !== SHELL_CACHE && k !== ASSET_CACHE)
+          .filter((k) => (k.startsWith('globepen-') || k.startsWith('sefernote-')) && k !== SHELL_CACHE && k !== ASSET_CACHE)
           .map((k) => caches.delete(k))
       );
       await self.clients.claim();
@@ -104,7 +104,7 @@ async function navigationHandler(req) {
     if (shell) return shell;
     const offline = await cache.match(OFFLINE_URL);
     if (offline) return offline;
-    return new Response('GlobePen is offline and no cached shell is available. Reconnect and reload.', {
+    return new Response('SeferNote is offline and no cached shell is available. Reconnect and reload.', {
       status: 503,
       headers: { 'content-type': 'text/plain; charset=utf-8' },
     });

@@ -329,8 +329,8 @@ export const AppLayout: React.FC = () => {
             <div className="flex lg:hidden items-center gap-3 min-w-0">
               <div className="shrink-0"><Logo size={32} variant="icon" /></div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 leading-snug break-words line-clamp-2" title={isSchoolPortal ? branding.schoolName : 'GlobePen'}>
-                  {isSchoolPortal ? branding.schoolName : 'GlobePen'}
+                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 leading-snug break-words line-clamp-2" title={isSchoolPortal ? branding.schoolName : 'SeferNote'}>
+                  {isSchoolPortal ? branding.schoolName : 'SeferNote'}
                 </p>
               </div>
             </div>

@@ -25,7 +25,7 @@
 }
 
 :root {
-  /* ── GlobePen platform tokens ─────────────────────────────────────
+  /* ── SeferNote platform tokens ─────────────────────────────────────
      Namespace rule: --app-* is the platform's own chrome. --brand-*
      belongs to the school and is written at runtime by BrandContext
      (--brand-primary, --brand-secondary, --brand-on-primary,

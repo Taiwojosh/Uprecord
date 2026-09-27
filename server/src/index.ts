@@ -49,7 +49,7 @@ app.use(csrfProtection);
 // ─── Health Check (Platform & Monitoring) ────────────────────────────
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', product: 'GlobePen', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', product: 'SeferNote', timestamp: new Date().toISOString() });
 });
 
 // ─── Server-Side Hostname Tenant Resolution ──────────────────────────
@@ -86,7 +86,7 @@ app.use(errorHandler);
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
-    console.log(`\n🔒 GlobePen API Server running on http://localhost:${PORT}`);
+    console.log(`\n🔒 SeferNote API Server running on http://localhost:${PORT}`);
     console.log(`   Health check: http://localhost:${PORT}/api/health`);
     console.log(`   Environment:  ${process.env.NODE_ENV || 'development'}\n`);
   });

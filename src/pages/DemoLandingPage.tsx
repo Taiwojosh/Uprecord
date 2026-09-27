@@ -18,10 +18,10 @@ export const DemoLandingPage: React.FC = () => {
           Demo Environment
         </div>
         <h1 className="text-5xl font-extrabold leading-tight mb-6 text-white">
-          GlobePen Demo School
+          SeferNote Demo School
         </h1>
         <p className="text-lg text-white/60 mb-10">
-          This is a fictional school for exploring GlobePen's features. Sign in to try the platform.
+          This is a fictional school for exploring SeferNote's features. Sign in to try the platform.
         </p>
         <a href="/login" className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 px-8 rounded-full text-lg transition shadow-lg shadow-emerald-500/30">
           Sign In to Demo
@@ -29,7 +29,7 @@ export const DemoLandingPage: React.FC = () => {
       </section>
 
       <footer className="border-t border-white/10 py-8 text-center text-white/30 text-sm">
-        GlobePen Demo — Not a real school
+        SeferNote Demo — Not a real school
       </footer>
     </div>
   );

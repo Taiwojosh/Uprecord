@@ -150,7 +150,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     // Registration must occur on the central platform host, not inside an individual school portal
     if (req.resolvedSchool) {
-      res.status(400).json({ error: 'School registration must be completed on the main GlobePen platform.' });
+      res.status(400).json({ error: 'School registration must be completed on the main SeferNote platform.' });
       return;
     }
 
@@ -379,6 +379,19 @@ router.post('/invite', authenticate, enforceTenant, requireAdmin, async (req: Re
 
     const { email, fullName, role, department, phone, studentId } = parsed.data;
 
+    if ((role === 'student') !== Boolean(studentId)) {
+      res.status(400).json({ error: 'A student account must link to one student record; staff accounts cannot link to a student.' });
+      return;
+    }
+    if (studentId) {
+      const [pupil, existingAccount] = await Promise.all([
+        prisma.student.findFirst({ where: { id: studentId, schoolId: req.user!.schoolId!, status: 'Active' }, select: { id: true } }),
+        prisma.user.findFirst({ where: { studentId, schoolId: req.user!.schoolId! }, select: { id: true } }),
+      ]);
+      if (!pupil) { res.status(400).json({ error: 'Select an active student in your school.' }); return; }
+      if (existingAccount) { res.status(409).json({ error: 'This student already has a portal account.' }); return; }
+    }
+
     // Generate secure 32-byte activation token
     const setupToken = crypto.randomBytes(32).toString('hex');
     const setupTokenHash = crypto.createHash('sha256').update(setupToken).digest('hex');
@@ -395,7 +408,7 @@ router.post('/invite', authenticate, enforceTenant, requireAdmin, async (req: Re
         schoolId: req.user!.schoolId!,
         status: 'pending_activation',
         passwordHash: null,
-        setupToken, // Stores plaintext for backwards compatibility until migration script clears it
+        setupToken: null,
         setupTokenHash,
         setupTokenExpires,
       },
@@ -407,7 +420,7 @@ router.post('/invite', authenticate, enforceTenant, requireAdmin, async (req: Re
     // Dispatch via outbound mail dispatcher / local development sink
     await sendSystemEmail({
       to: user.email,
-      subject: 'Invitation to GlobePen School Portal',
+      subject: 'Invitation to SeferNote School Portal',
       template: 'invitation',
       link: setupUrl,
       recipientName: fullName,
@@ -652,7 +665,7 @@ router.post('/forgot-password', forgotPasswordRateLimiter, async (req: Request, 
       try {
         await sendSystemEmail({
           to: user.email,
-          subject: 'GlobePen Password Reset Request',
+          subject: 'SeferNote Password Reset Request',
           template: 'password-reset',
           link: resetUrl,
           recipientName: user.fullName,

@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "GlobePen — School Management Platform",
-  "short_name": "GlobePen",
-  "description": "GlobePen is a modern, unified multi-tenant school management SaaS platform empowering educational institutions.",
+  "name": "SeferNote — School Management Platform",
+  "short_name": "SeferNote",
+  "description": "SeferNote is a modern, unified multi-tenant school management SaaS platform empowering educational institutions.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

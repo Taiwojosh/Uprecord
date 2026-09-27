@@ -27,7 +27,7 @@ export const UpdateBanner: React.FC = () => {
         <div className="flex items-start gap-3">
           <RefreshCw className="w-4 h-4 mt-0.5 text-[var(--app-info)] shrink-0" aria-hidden="true" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-[var(--app-text)]">A new version of GlobePen is ready</p>
+            <p className="text-sm font-bold text-[var(--app-text)]">A new version of SeferNote is ready</p>
             <p className="text-xs text-[var(--app-text-muted)] mt-1 leading-relaxed">
               Nothing is reloaded automatically. Refresh when it suits you — anything on screen right now stays put.
             </p>
