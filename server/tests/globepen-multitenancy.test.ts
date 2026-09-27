@@ -238,12 +238,13 @@ describe('SeferNote Multi-Tenancy, Hostname Resolution & Branding Suite', () => 
         });
       expect(inviteRes.status).toBe(201);
 
-      // Extract setupToken from database
+      // The one-time raw token is returned only to the inviting administrator.
       const invitedUser = await prisma.user.findUnique({
         where: { email: 'teacher@alpha-academy.edu' },
       });
-      const token = invitedUser?.setupToken;
+      const token = inviteRes.body.setupToken;
       expect(token).toBeDefined();
+      expect(invitedUser?.setupToken).toBeNull();
 
       // 2. Attempt activation on Beta portal
       const activateOnBeta = await request(app)
