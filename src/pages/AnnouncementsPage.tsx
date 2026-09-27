@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
   Bell, 
@@ -26,12 +28,22 @@ export const AnnouncementsPage: React.FC = () => {
   const { user } = useAuth();
   const schoolId = user?.schoolId;
   const canManage = Boolean(schoolId && (user?.role === 'admin' || user?.isAdmin));
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [announcementToDelete, setAnnouncementToDelete] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (canManage && searchParams.get('draft') === 'new') {
+      setIsAddModalOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('draft');
+      setSearchParams(next, { replace: true });
+    }
+  }, [canManage, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!isAddModalOpen) return;
@@ -122,14 +134,11 @@ export const AnnouncementsPage: React.FC = () => {
   return (
     <div className="space-y-8 pb-20">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <PageHeader 
-          title="Announcement drafts"
-          subtitle="Prepare school updates for later sharing."
-        />
+        <div className="space-y-1"><h2 className="text-xl font-semibold">Announcement drafts</h2><p className="text-sm text-muted-foreground">Prepare school updates for later sharing.</p></div>
         {(user?.role === 'admin' || user?.isAdmin) && (
           <button 
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white text-sm font-bold rounded-2xl hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:opacity-90 transition-colors"
           >
             <Plus className="w-5 h-5" />
             New draft
@@ -138,27 +147,7 @@ export const AnnouncementsPage: React.FC = () => {
       </div>
 
       <p role="note" className="rounded-xl border border-border bg-surface-strong px-4 py-3 text-sm text-muted-foreground">Drafts are saved in this browser for this school. They are not published or delivered to staff, students or parents.</p>
-      {/* Stats Summary */}
-      {(user?.role === 'admin' || user?.isAdmin) && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-          <StatCard 
-            icon={Bell} 
-            label="Saved drafts"
-            value={announcements.length} 
-          />
-          <StatCard 
-            icon={Pin} 
-            label="Pinned Updates" 
-            value={announcements.filter(a => a.isPinned).length} 
-          />
-          <StatCard 
-            icon={Calendar} 
-            label="Posted Today" 
-            value={announcements.filter(a => new Date(a.createdAt).toDateString() === new Date().toDateString()).length} 
-            className="col-span-2 md:col-span-1"
-          />
-        </div>
-      )}
+      <p className="text-sm text-muted-foreground">{announcements.length} saved drafts · {announcements.filter(a => a.isPinned).length} pinned</p>
 
       {/* Search Bar */}
       <div className="bg-white p-4 rounded-[2rem] border border-slate-200 shadow-card flex items-center gap-4">
@@ -191,7 +180,7 @@ export const AnnouncementsPage: React.FC = () => {
               }`}
             >
               {announcement.isPinned && (
-                <div className="absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full">
+                <div className="self-start shrink-0 flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full">
                   <Pin className="w-3.5 h-3.5" />
                   <span className="text-[0.625rem] font-bold uppercase tracking-widest">Pinned</span>
                 </div>
@@ -250,9 +239,9 @@ export const AnnouncementsPage: React.FC = () => {
       )}
 
       {/* Add Modal */}
-      <AnimatePresence>
+      {createPortal(<AnimatePresence>
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -282,7 +271,7 @@ export const AnnouncementsPage: React.FC = () => {
                 </div>
                 <button 
                   onClick={() => setIsAddModalOpen(false)}
-                  className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="p-3 shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
                   aria-label="Close draft"
                 >
                   <X className="w-6 h-6" />
@@ -341,7 +330,7 @@ export const AnnouncementsPage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-3 py-4 bg-slate-900 text-white font-bold text-sm rounded-2xl hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200 disabled:opacity-50"
+                    className="flex-3 py-4 bg-primary text-primary-foreground font-semibold text-sm rounded-xl hover:opacity-90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isSubmitting ? <Spinner size="sm" /> : <Plus className="w-5 h-5" />}
                     Save draft
@@ -351,7 +340,7 @@ export const AnnouncementsPage: React.FC = () => {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>, document.body)}
 
       <ConfirmDialog 
         isOpen={!!announcementToDelete}

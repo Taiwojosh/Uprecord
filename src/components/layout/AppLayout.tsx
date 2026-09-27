@@ -298,6 +298,7 @@ export const AppLayout: React.FC = () => {
       {/* Mobile Sidebar */}
       <div className="lg:hidden">
         <Sidebar 
+          mobile
           isOpen={isSidebarOpen} 
           onClose={() => setIsSidebarOpen(false)} 
         />
@@ -313,12 +314,12 @@ export const AppLayout: React.FC = () => {
             opacity: isImmersive ? 0 : 1
           }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="h-20 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between px-6 lg:px-10 shrink-0 z-30 shadow-sm shadow-gray-50/50 dark:shadow-slate-950/20 transition-colors duration-200 overflow-hidden"
+          className="h-20 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between gap-2 px-3 sm:px-6 lg:px-10 shrink-0 z-30 shadow-sm shadow-gray-50/50 dark:shadow-slate-950/20 transition-colors duration-200"
         >
           <div className="flex items-center gap-3 sm:gap-6 flex-1 min-w-0">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2.5 rounded-xl text-gray-400 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 lg:hidden transition-colors"
+              className="p-2.5 shrink-0 rounded-xl text-gray-400 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 lg:hidden transition-colors"
               aria-label="Open menu"
             >
               <Menu className="w-6 h-6" />
@@ -328,8 +329,8 @@ export const AppLayout: React.FC = () => {
             <div className="flex lg:hidden items-center gap-3 min-w-0">
               <div className="shrink-0"><Logo size={32} variant="icon" /></div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 leading-snug truncate max-w-[220px]" title={isSchoolPortal ? (branding.portalTitle || branding.schoolName) : 'GlobePen'}>
-                  {isSchoolPortal ? (branding.portalTitle || branding.schoolName) : 'GlobePen Hub'}
+                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 leading-snug break-words line-clamp-2" title={isSchoolPortal ? branding.schoolName : 'GlobePen'}>
+                  {isSchoolPortal ? branding.schoolName : 'GlobePen'}
                 </p>
               </div>
             </div>
@@ -473,13 +474,13 @@ export const AppLayout: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-1 sm:gap-3 shrink-0">
             <button 
                 onClick={() => navigate('/announcements')}
-                className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-300 hover:text-blue-600 dark:hover:text-amber-400 rounded-2xl transition-all border border-transparent hover:border-blue-50 dark:hover:border-slate-700 relative group"
+                aria-label="Open communication"
+                className="hidden sm:inline-flex p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-300 hover:text-blue-600 dark:hover:text-amber-400 rounded-2xl transition-all border border-transparent hover:border-blue-50 dark:hover:border-slate-700 relative group"
             >
               <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-              <span className="absolute top-3 right-3 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-slate-950" />
             </button>
 
             {/* Theme Toggle Button */}
@@ -488,6 +489,7 @@ export const AppLayout: React.FC = () => {
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-300 hover:text-blue-600 dark:hover:text-amber-400 rounded-2xl transition-all border border-transparent hover:border-blue-50 dark:hover:border-slate-700 relative group"
               title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {theme === 'dark' ? (
                 <Sun className="w-5 h-5 group-hover:rotate-45 transition-transform duration-300 text-amber-500" />
@@ -502,6 +504,7 @@ export const AppLayout: React.FC = () => {
               onClick={toggleImmersive}
               className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 rounded-2xl transition-all border border-transparent hover:border-blue-50 dark:hover:border-slate-700 relative group"
               title="Toggle Immersive Mode"
+              aria-label="Toggle focus mode"
             >
               <Maximize2 className="w-5 h-5 group-hover:scale-110 transition-transform duration-300 text-slate-400 dark:text-slate-300 text-gray-500 dark:text-slate-300" />
             </button>
@@ -509,7 +512,7 @@ export const AppLayout: React.FC = () => {
         </motion.header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto bg-[#F8F9FA] dark:bg-slate-950 min-h-0 h-full">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-[#F8F9FA] dark:bg-slate-950 min-h-0 h-full">
           <motion.div 
             animate={{
               padding: isImmersive ? '0px' : undefined,
@@ -518,7 +521,7 @@ export const AppLayout: React.FC = () => {
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className={`mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500 w-full min-h-full flex flex-col ${isImmersive ? 'p-0' : 'p-6 lg:p-10'}`}
           >
-            {!["/registry", "/registry/history", "/dashboard", "/settings"].includes(location.pathname) && <div role="note" className="m-4 p-4 rounded-lg bg-amber-50 text-amber-950 text-sm">Pilot: this academic screen uses browser-local records. For records shared across devices, open <a href="/registry" className="font-bold underline">School Registry</a>.</div>}<Outlet />
+            {!location.pathname.startsWith('/communication') && !["/registry", "/registry/history", "/dashboard", "/settings"].includes(location.pathname) && <div role="note" className="m-4 p-4 rounded-lg bg-amber-50 text-amber-950 text-sm">Pilot: this academic screen uses browser-local records. For records shared across devices, open <a href="/registry" className="font-bold underline">School Registry</a>.</div>}<Outlet />
           </motion.div>
         </main>
 
@@ -530,7 +533,7 @@ export const AppLayout: React.FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8, y: -20 }}
               transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-              className="fixed top-6 right-6 z-[99999] flex items-center gap-2 pointer-events-auto"
+              className="fixed top-6 right-6 z-40 flex items-center gap-2 pointer-events-auto"
             >
               <button
                 onClick={() => setImmersive(false)}
@@ -550,7 +553,7 @@ export const AppLayout: React.FC = () => {
 
       {/* Floating Action Button (FAB) Quick Actions Menu */}
       {fabActions.length > 0 && (
-        <div id="fab-actions-root" className={`fixed bottom-6 right-6 lg:bottom-10 lg:right-10 z-[99999] flex-col items-end pointer-events-none ${location.pathname.startsWith('/attendance') ? 'hidden md:flex' : 'flex'}`}>
+        <div id="fab-actions-root" className={`fixed bottom-6 right-6 lg:bottom-10 lg:right-10 z-40 flex-col items-end pointer-events-none ${location.pathname.startsWith('/attendance') ? 'hidden md:flex' : 'flex'}`}>
           {/* Backdrop Overlay when FAB is open */}
           <AnimatePresence>
             {isFabOpen && (

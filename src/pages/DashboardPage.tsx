@@ -49,6 +49,11 @@ export const DashboardPage = () => {
         </p>
       </header>
 
+      <nav aria-label="Common tasks" className="flex flex-wrap gap-3">
+        <Link to="/communication/announcements?draft=new" className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">New announcement draft</Link>
+        <Link to="/registry/history" className="inline-flex min-h-11 items-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold">View historical records</Link>
+      </nav>
+
       {error ? (
         <Alert tone="danger" title="Totals unavailable">
           School totals could not be loaded. Please reload.

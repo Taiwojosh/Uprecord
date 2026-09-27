@@ -32,7 +32,7 @@ export const Logo: React.FC<LogoProps> = ({
   }, [activeLogoUrl]);
 
   return (
-    <div className={`inline-flex items-center ${variant === 'full' ? 'gap-2.5' : ''} ${className}`}>
+    <div className={`inline-flex min-w-0 items-center ${variant === 'full' ? 'gap-2.5' : ''} ${className}`}>
       {/* Icon or School Logo */}
       <div 
         className="relative flex items-center justify-center shrink-0 select-none"
@@ -112,10 +112,10 @@ export const Logo: React.FC<LogoProps> = ({
       </div>
 
       {variant === 'full' && (
-        <div className="flex flex-col leading-none">
+        <div className="flex min-w-0 flex-col leading-none">
           {activeSchoolName ? (
             <>
-              <span className={`text-base font-extrabold tracking-tight truncate max-w-[200px] ${
+              <span title={activePortalTitle || activeSchoolName} className={`text-sm font-bold tracking-tight leading-snug break-words line-clamp-2 ${
                 theme === 'dark' ? 'text-white' : 'text-slate-900 dark:text-white'
               }`}>
                 {activePortalTitle || activeSchoolName}

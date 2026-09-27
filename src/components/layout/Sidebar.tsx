@@ -33,9 +33,10 @@ import { db } from '../../db/db';
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  mobile?: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, mobile = false }) => {
   const { user, logout } = useAuth();
   
   const role = user?.role || 'admin';
@@ -156,17 +157,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       )}
 
       {/* Sidebar Container */}
-      <aside className={`
+      <aside inert={mobile && !isOpen} aria-hidden={mobile && !isOpen ? true : undefined} className={`
         fixed inset-y-0 left-0 z-50 w-60 bg-slate-900 dark:bg-slate-950 text-white border-r border-slate-800 dark:border-slate-900/40 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:h-full lg:inset-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="h-[64px] flex items-center justify-between px-5 border-b border-slate-700/50">
+          <div className="min-h-20 shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-700/50">
             <Logo size={28} variant="full" theme="dark" />
             <button 
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-700 lg:hidden transition-colors"
+              className="p-2.5 shrink-0 rounded-lg text-slate-400 hover:bg-slate-700 lg:hidden transition-colors"
               aria-label="Close sidebar"
             >
               <X className="w-5 h-5" />
