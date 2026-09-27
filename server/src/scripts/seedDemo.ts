@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 try {
   if (await prisma.school.count()) throw new Error('Demo seed requires an empty database.');
   const school = await prisma.school.create({ data: {
-    name: 'GlobePen Demo School', slug: 'demo', portalTitle: 'GlobePen Demo School Portal',
+    name: 'SeferNote Demo School', slug: 'demo', portalTitle: 'SeferNote Demo School Portal',
     slogan: 'A place to learn and grow', brandColor: '#2563eb', secondaryColor: '#0d9488',
     address: 'Demonstration school — sample data only',
   } });

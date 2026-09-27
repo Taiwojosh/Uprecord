@@ -67,7 +67,7 @@ function buildPlainTextBody(email: Omit<OutboundEmail, 'timestamp'>): string {
     return [
       `Hello ${email.recipientName || 'there'},`,
       '',
-      `You have been invited to join GlobePen${email.schoolName ? ` for ${email.schoolName}` : ''}.`,
+      `You have been invited to join SeferNote${email.schoolName ? ` for ${email.schoolName}` : ''}.`,
       'To activate your account and set your password, visit the link below:',
       email.link,
       '',
@@ -79,7 +79,7 @@ function buildPlainTextBody(email: Omit<OutboundEmail, 'timestamp'>): string {
   return [
     `Hello,`,
     '',
-    'A password reset request was received for your GlobePen account.',
+    'A password reset request was received for your SeferNote account.',
     'To reset your password, visit the link below:',
     email.link,
     '',
@@ -94,11 +94,11 @@ function buildPlainTextBody(email: Omit<OutboundEmail, 'timestamp'>): string {
 function buildHtmlBody(rawEmail: Omit<OutboundEmail, 'timestamp'>): string {
   const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
   const email = { ...rawEmail, schoolName: rawEmail.schoolName ? escapeHtml(rawEmail.schoolName) : undefined, link: escapeHtml(rawEmail.link) };
-  const title = email.template === 'invitation' ? 'Activate Your GlobePen Account' : 'Reset Your GlobePen Password';
+  const title = email.template === 'invitation' ? 'Activate Your SeferNote Account' : 'Reset Your SeferNote Password';
   const actionText = email.template === 'invitation' ? 'Activate Account' : 'Reset Password';
   const explanation = email.template === 'invitation'
-    ? `You have been invited to join GlobePen${email.schoolName ? ` for <strong>${email.schoolName}</strong>` : ''}.`
-    : 'A request was made to reset your GlobePen account password.';
+    ? `You have been invited to join SeferNote${email.schoolName ? ` for <strong>${email.schoolName}</strong>` : ''}.`
+    : 'A request was made to reset your SeferNote account password.';
 
   return `
     <!DOCTYPE html>
@@ -167,7 +167,7 @@ export async function sendSystemEmail(
       });
     }
 
-    const from = process.env.SMTP_FROM || 'GlobePen Security <noreply@globepen.com>';
+    const from = process.env.SMTP_FROM || 'SeferNote Security <noreply@ifyspace.tech>';
 
     try {
       await transporter.sendMail({
