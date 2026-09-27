@@ -13,7 +13,7 @@
 
 - Embedded video uses LiveKit access tokens but has no configured LiveKit service, public video hostname, or two-person media test. The current 2-vCPU/8-GB VPS has about 5 GB available memory but capacity for a full class is unmeasured. Google Meet/Zoom links are the working V1 path when deployed.
 - The DEVICKYS pilot needs at least one assigned teacher account and one activated pupil account for an end-to-end CBT/classroom trial. Imported pupil records alone do not create sign-in accounts.
-- The SeferNote text, wordmark, SVG favicon, API branding and PWA metadata changed in the candidate. The existing raster install icons still show the older mark. The production site remains GlobePen until a reviewed release is deployed.
+- The SeferNote text, wordmark, SVG favicon, raster install icons, API branding, email templates and PWA metadata changed in the candidate. The production site remains GlobePen until a reviewed release is deployed.
 - The local Windows Prisma schema engine fails before tests begin. The isolated Linux test run passed, so the local failure is an environment issue rather than evidence of an application test failure.
 - The candidate has not had an actual browser review of the new SeferNote UI at desktop/mobile sizes or a real multi-person video session. Do not certify visual or video readiness from build/tests alone.
 - The tenant backfill importer remains on its own branch. Its migration adds unique keys to Subject and TraitDefinition; the documented duplicate preflight is needed before it can be combined with the learning release.
@@ -22,7 +22,7 @@
 
 1. Agree the DEVICKYS pilot scope: external meeting links for today's live classroom, embedded video gated until a provider and capacity test are ready.
 2. Review and combine the tenant-backfill and learning migrations on an isolated branch; rehearse them on a disposable database shaped like the schema, without production data.
-3. Finish raster app icons and run desktop/mobile browser checks using the DEVICKYS school brand.
+3. Run desktop/mobile browser checks using the DEVICKYS school brand, including the new install icons.
 4. Prepare teacher and student activation links through the school admin flow, then test create/publish/take/grade CBT and schedule/start/join/end a live class with real pilot accounts.
 5. Take a production SQLite backup, verify migration preflight and rollback, then deploy a versioned release and smoke-test the public, login, CBT and class routes.
 
