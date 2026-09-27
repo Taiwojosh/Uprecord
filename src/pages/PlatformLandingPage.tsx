@@ -239,109 +239,120 @@ export const PlatformLandingPage: React.FC = () => {
             <div className="p-4 sm:p-6 lg:p-8 space-y-6">
               
               {/* Header inside the interface */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">School Registry & Master Roster</h3>
-                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800">
-                      Demonstration Session · 2025/2026
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Academic Cohorts & Class Registers</h3>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+                      Session 2025/2026 · Term 2
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">Simulated operational records across primary and college divisions.</p>
+                  <p className="text-xs text-slate-500 mt-1">Structural division rosters, curriculum tracking, and report generation workflows.</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs font-medium px-3 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                    6 Active Classes
+                    6 Active Arms
                   </span>
-                  <span className="text-xs font-semibold px-3 py-1.5 rounded bg-slate-900 dark:bg-white text-white dark:text-slate-900">
+                  <a href="/login" className="text-xs font-semibold px-3 py-1.5 rounded bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors">
                     Report Generator
-                  </span>
+                  </a>
                 </div>
               </div>
 
-              {/* Metric Cards Row */}
+              {/* Module Workflow KPI Cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div className="p-3.5 sm:p-4 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                    <span>Enrolled Scholars</span>
+                    <span>Configured Cohorts</span>
                     <Users className="w-3.5 h-3.5 text-slate-400" />
                   </div>
-                  <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">117</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Across JSS & SS arms</p>
+                  <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">6 Arms</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Junior & Senior divisions</p>
                 </div>
 
                 <div className="p-3.5 sm:p-4 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                    <span>Faculty Profiles</span>
+                    <span>Academic Calendar</span>
                     <Building2 className="w-3.5 h-3.5 text-slate-400" />
                   </div>
-                  <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">16</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Assigned instructors</p>
+                  <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">Term 2</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">12 of 14 weeks recorded</p>
                 </div>
 
                 <div className="p-3.5 sm:p-4 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                    <span>Term Reports</span>
+                    <span>Report Engine</span>
                     <Printer className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                   <p className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">A4 Ready</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">WCAG contrast verified</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Dual-term comparative layout</p>
                 </div>
 
                 <div className="p-3.5 sm:p-4 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                    <span>Isolation State</span>
+                    <span>Tenant Boundary</span>
                     <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
                   </div>
-                  <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">Secure</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Hostname verified</p>
+                  <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">Isolated</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Zero cross-school visibility</p>
                 </div>
               </div>
 
-              {/* Data Table Mockup */}
+              {/* Data Table: Illustrative Non-Personal Workflow Records */}
               <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
                       <tr>
-                        <th className="py-2.5 px-3">Student Name</th>
-                        <th className="py-2.5 px-3">Admission No.</th>
-                        <th className="py-2.5 px-3">Class Arm</th>
-                        <th className="py-2.5 px-3 hidden sm:table-cell">Term Attendance</th>
-                        <th className="py-2.5 px-3 text-right">Status</th>
+                        <th className="py-2.5 px-3">Class Arm / Cohort</th>
+                        <th className="py-2.5 px-3">Academic Division</th>
+                        <th className="py-2.5 px-3">Curriculum Load</th>
+                        <th className="py-2.5 px-3 hidden sm:table-cell">Attendance & Assessment</th>
+                        <th className="py-2.5 px-3 text-right">Broadsheet Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                       <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20">
-                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">David Adeyemi</td>
-                        <td className="py-2.5 px-3 font-mono text-[11px]">DGS-2024-042</td>
-                        <td className="py-2.5 px-3">JSS 2 Alpha</td>
-                        <td className="py-2.5 px-3 hidden sm:table-cell">98.2% (112 / 114 days)</td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">JSS 1 (Gold)</td>
+                        <td className="py-2.5 px-3">Junior Secondary</td>
+                        <td className="py-2.5 px-3">12 Subjects Configured</td>
+                        <td className="py-2.5 px-3 hidden sm:table-cell">Daily Roll Call · CA Complete</td>
                         <td className="py-2.5 px-3 text-right">
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-                            Active
+                            Ready to Print
                           </span>
                         </td>
                       </tr>
                       <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20">
-                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">Chidinma Okonkwo</td>
-                        <td className="py-2.5 px-3 font-mono text-[11px]">DGS-2023-019</td>
-                        <td className="py-2.5 px-3">SS 1 Science</td>
-                        <td className="py-2.5 px-3 hidden sm:table-cell">96.5% (110 / 114 days)</td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">JSS 2 (Alpha)</td>
+                        <td className="py-2.5 px-3">Junior Secondary</td>
+                        <td className="py-2.5 px-3">12 Subjects Configured</td>
+                        <td className="py-2.5 px-3 hidden sm:table-cell">Daily Roll Call · CA Complete</td>
                         <td className="py-2.5 px-3 text-right">
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-                            Active
+                            Ready to Print
                           </span>
                         </td>
                       </tr>
                       <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20">
-                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">Fatimah Aliyu</td>
-                        <td className="py-2.5 px-3 font-mono text-[11px]">DGS-2024-088</td>
-                        <td className="py-2.5 px-3">JSS 1 Gold</td>
-                        <td className="py-2.5 px-3 hidden sm:table-cell">100.0% (114 / 114 days)</td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">SS 1 (Science)</td>
+                        <td className="py-2.5 px-3">Senior Secondary</td>
+                        <td className="py-2.5 px-3">14 Subjects Configured</td>
+                        <td className="py-2.5 px-3 hidden sm:table-cell">Daily Roll Call · In Progress</td>
                         <td className="py-2.5 px-3 text-right">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-                            Active
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                            Compiling
+                          </span>
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20">
+                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">SS 2 (Arts & Humanities)</td>
+                        <td className="py-2.5 px-3">Senior Secondary</td>
+                        <td className="py-2.5 px-3">13 Subjects Configured</td>
+                        <td className="py-2.5 px-3 hidden sm:table-cell">Daily Roll Call · In Progress</td>
+                        <td className="py-2.5 px-3 text-right">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                            Compiling
                           </span>
                         </td>
                       </tr>
@@ -349,8 +360,8 @@ export const PlatformLandingPage: React.FC = () => {
                   </table>
                 </div>
                 <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 flex justify-between items-center">
-                  <span>Showing 3 sample records · School tenant isolation active</span>
-                  <a href="/login" className="font-semibold text-slate-700 dark:text-slate-300 hover:underline">Open Full Registry →</a>
+                  <span>Showing 4 institutional class cohorts · Tenant workspace isolation verified</span>
+                  <a href="/login" className="font-semibold text-slate-700 dark:text-slate-300 hover:underline">Open Cohort Roster &rarr;</a>
                 </div>
               </div>
             </div>

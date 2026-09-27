@@ -73,6 +73,14 @@ Before declaring any task complete, agents must verify:
 3. **Production Build**: `npm run build` completes successfully.
 4. **Browser Verification**: Responsive UI changes must be verified across desktop and mobile viewports, including light and dark modes, with active school brand tokens.
 
+### 5.1 Specialist Review & Verification Discipline
+For substantial tasks, use independent specialist review when available:
+- **Separation of Duties**: The implementation agent must not be the sole verifier for production-sensitive changes.
+- **Browser Acceptance**: Browser-facing work requires actual runtime browser verification (`window.innerWidth`, `document.documentElement.clientWidth`, `document.documentElement.scrollWidth`) before claiming visual completion.
+- **Git Push Verification**: Claiming completion requires comparing local and remote refs (`git rev-parse HEAD == git rev-parse origin/<branch>`).
+- **Standardized Evidence**: Reports must clearly distinguish `VERIFIED`, `INFERRED`, and `NOT TESTED`. If verification tooling is unavailable, report `NOT TESTED`.
+- **No Self-Certified Merge/Deploy**: No merge or deployment may proceed based solely on an implementing agent's self-assessment.
+
 ---
 
 ## 6. Escalation Protocol: QUESTION FOR CHATGPT
