@@ -58,4 +58,20 @@ describe('Persistent pilot registry', () => {
     expect(denied.status).toBe(403);
     expect((await request(app).get('/api/schools/branding').set('Host','unverified.pilot.test')).status).toBe(404);
   });
+  it('invites only a pupil from the same school and stores no raw activation token', async () => {
+    const ownClass = await prisma.class.create({ data: { schoolId: a.id, className: 'Invite Class', level: 'Primary' } });
+    const own = await prisma.student.create({ data: { schoolId: a.id, classId: ownClass.id, fullName: 'Own Pupil', admissionNumber: 'OWN-INVITE', gender: 'Female' } });
+    const otherClass = await prisma.class.create({ data: { schoolId: b.id, className: 'Other Class', level: 'Primary' } });
+    const foreign = await prisma.student.create({ data: { schoolId: b.id, classId: otherClass.id, fullName: 'Other Pupil', admissionNumber: 'OTHER-1', gender: 'Male' } });
+    const invite = (email: string, role: string, studentId?: number) => api('post', '/api/auth/invite').send({ email, fullName: 'Pilot Pupil', role, studentId });
+    expect((await invite('foreign@pilot.test', 'student', foreign.id)).status).toBe(400);
+    expect((await invite('staff-linked@pilot.test', 'teacher', own.id)).status).toBe(400);
+    const result = await invite('own-pupil@pilot.test', 'student', own.id);
+    expect(result.status).toBe(201);
+    expect(result.body.setupToken).toMatch(/^[0-9a-f]{64}$/);
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: 'own-pupil@pilot.test' } });
+    expect(user.setupToken).toBeNull();
+    expect(user.setupTokenHash).toMatch(/^[0-9a-f]{64}$/);
+    expect((await invite('duplicate-pupil@pilot.test', 'student', own.id)).status).toBe(409);
+  });
 });
