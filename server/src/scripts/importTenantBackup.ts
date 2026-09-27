@@ -193,6 +193,12 @@ export interface LegacyBackup {
   traitGrades?: LegacyTraitGrade[];
   attendance?: LegacyAttendance[];
   comments?: unknown[];
+  /**
+   * Synthetic-test marker. The canonical Devickys backup fixture MUST NOT be
+   * bundled as a runtime input; automated tests set this marker and are rejected
+   * if real customer-shaped data is supplied.
+   */
+  syntheticFixture?: boolean;
 }
 
 // ─── Importer API ────────────────────────────────────────────────────────────
@@ -406,6 +412,22 @@ export async function importTenantBackup(options: ImportOptions = {}): Promise<I
 
   const backup = loaded.backup;
   const settings = backup.settings?.[0];
+
+  // Private customer-shaped backups are never accepted as importer inputs.
+  // Automated tests use clearly synthetic fixtures with syntheticFixture: true.
+  const schoolNameCandidate = text(options.schoolName) || text(settings?.schoolName);
+  const looksLikePrivateCustomerBackup =
+    !backup.syntheticFixture &&
+    (loaded.resolvedPath.toLowerCase().includes('devickys') ||
+      (schoolNameCandidate ?? '').toLowerCase().includes('devickys') ||
+      (backup.students ?? []).some((student) =>
+        typeof student.admissionNumber === 'string' && /^DGS-\d{4}-\d{3}$/.test(student.admissionNumber.trim()),
+      ));
+  if (looksLikePrivateCustomerBackup) {
+    throw new Error(
+      'Refusing to import a private customer-shaped backup. Use a clearly synthetic GlobePen Test Academy fixture instead.',
+    );
+  }
 
   if (!settings) {
     throw new Error(`Backup contains no settings record; refusing to import partial data (${loaded.resolvedPath}).`);

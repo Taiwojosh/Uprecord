@@ -12,21 +12,23 @@ import {
 } from '../src/scripts/importTenantBackup.js';
 
 /**
- * Compact fixture that mirrors the real Devickys export shape, including the
- * hazards the importer must survive: local (per-device) ids that must NOT be
+ * Compact synthetic fixture that mirrors a legacy Dexie export shape, including
+ * the hazards the importer must survive: local (per-device) ids that must NOT be
  * reused, dangling foreign keys, JSON-encoded arrays, and a class link that
- * points at a class absent from the backup.
+ * points at a class absent from the backup. Marked with syntheticFixture: true
+ * and strictly artificial tenant identity.
  */
 function fixture(): LegacyBackup {
   return {
+    syntheticFixture: true,
     activation: [],
     settings: [
       {
-        schoolName: 'Devickys Gem Schools',
-        schoolSlogan: 'Be of a good will and intelect...',
-        address: '2b Omotola street, Iwaya, Yaba Lagos Nig.',
-        brandColor: '#00b32d',
-        principalName: 'Mrs Okafor',
+        schoolName: 'GlobePen Test Academy',
+        schoolSlogan: 'Knowledge and Excellence',
+        address: '100 Test Avenue, Pilot City',
+        brandColor: '#2563eb',
+        principalName: 'Principal Test',
         nextTermDate: '2026-05-04',
         termClosingDate: '2026-04-10',
         currentTerm: 2,
@@ -49,8 +51,8 @@ function fixture(): LegacyBackup {
       },
     ],
     classes: [
-      { id: 11, className: 'JSS 2 Alpha', level: 'junior', teacherName: 'Mr Bello', departmentId: 3, capacity: 35 },
-      { id: 12, className: 'SS 1 Science', level: 'senior', teacherName: 'Mrs Ade', departmentId: 3, capacity: 40 },
+      { id: 11, className: 'JSS 2 Alpha', level: 'junior', teacherName: 'Teacher Alpha', departmentId: 3, capacity: 35 },
+      { id: 12, className: 'SS 1 Science', level: 'senior', teacherName: 'Teacher Beta', departmentId: 3, capacity: 40 },
     ],
     subjects: [
       { id: 21, subjectName: 'Mathematics', isCore: true, departmentIds: [3], coreLevels: ['junior', 'senior'], classIds: [11, 12] },
@@ -61,9 +63,9 @@ function fixture(): LegacyBackup {
       { id: 32, traitName: 'Handwriting', displayOrder: 10, category: 'psychomotor' },
     ],
     students: [
-      { id: 41, admissionNumber: 'DGS-2024-042', fullName: 'David Adeyemi', gender: 'Male', classId: 11, status: 'Active', enrolledDate: '2025-09-01', photoBase64: 'data:image/png;base64,AAA', parentPhone: '+2348033123456' },
-      { id: 42, admissionNumber: 'DGS-2023-019', fullName: 'Chidinma Okonkwo', gender: 'Female', classId: 12, status: 'Active' },
-      { id: 43, admissionNumber: 'DGS-2024-088', fullName: 'Fatimah Aliyu', gender: 'Female', classId: 999 },
+      { id: 41, admissionNumber: 'GPA-2026-001', fullName: 'Test Pupil One', gender: 'Male', classId: 11, status: 'Active', enrolledDate: '2025-09-01', photoBase64: 'data:image/png;base64,AAA', parentPhone: '+2348000000001' },
+      { id: 42, admissionNumber: 'GPA-2026-002', fullName: 'Test Pupil Two', gender: 'Female', classId: 12, status: 'Active' },
+      { id: 43, admissionNumber: 'GPA-2026-003', fullName: 'Test Pupil Three', gender: 'Female', classId: 999 },
     ],
     grades: [
       { id: 51, studentId: 41, subjectId: 21, term: 1, session: '2025/2026', caScores: { ca1: 15, ca2: 15 }, examScore: 50, total: 80, grade: 'A', remark: 'Excellent' },
@@ -75,11 +77,22 @@ function fixture(): LegacyBackup {
   };
 }
 
-const baseOptions = { schoolSlug: 'devickys', adminEmail: 'admin@devickys.test' };
+const baseOptions = { schoolSlug: 'globe-pen-test-academy', adminEmail: 'admin@globepen-test-academy.test' };
 
 describe('Tenant backfill importer', () => {
   beforeEach(async () => {
     await resetTestDatabase();
+  });
+
+  it('refuses to import a private customer-shaped backup without synthetic fixture flag', async () => {
+    const rawCustomerBackup: LegacyBackup = {
+      settings: [{ schoolName: 'Devickys Gem Schools' }],
+      students: [{ admissionNumber: 'DGS-2024-001', fullName: 'Real Pupil' }],
+    };
+
+    await expect(
+      importTenantBackup({ backup: rawCustomerBackup, schoolSlug: 'devickys' }),
+    ).rejects.toThrow(/Refusing to import a private customer-shaped backup/);
   });
 
   it('defaults to a dry run that reports work without writing anything', async () => {
@@ -99,7 +112,7 @@ describe('Tenant backfill importer', () => {
 
   it('imports the tenant and remaps every local id to a server id', async () => {
     const summary = await importTenantBackup({ backup: fixture(), ...baseOptions, apply: true });
-    const school = await prisma.school.findUniqueOrThrow({ where: { slug: 'devickys' } });
+    const school = await prisma.school.findUniqueOrThrow({ where: { slug: 'globe-pen-test-academy' } });
 
     expect(summary.schoolCreated).toBe(true);
     expect(summary.counts.school.created).toBe(1);
@@ -110,7 +123,7 @@ describe('Tenant backfill importer', () => {
     expect(summary.counts.grades.created).toBe(1);
 
     const david = await prisma.student.findFirstOrThrow({
-      where: { schoolId: school.id, admissionNumber: 'DGS-2024-042' },
+      where: { schoolId: school.id, admissionNumber: 'GPA-2026-001' },
     });
 
     // The local id (41) is per-device and must never be copied onto the server.
@@ -144,7 +157,7 @@ describe('Tenant backfill importer', () => {
 
   it('preserves JSON-encoded arrays and drops only the unresolvable class links', async () => {
     const summary = await importTenantBackup({ backup: fixture(), ...baseOptions, apply: true });
-    const school = await prisma.school.findUniqueOrThrow({ where: { slug: 'devickys' } });
+    const school = await prisma.school.findUniqueOrThrow({ where: { slug: 'globe-pen-test-academy' } });
 
     const mathematics = await prisma.subject.findFirstOrThrow({ where: { schoolId: school.id, subjectName: 'Mathematics' } });
     expect(JSON.parse(mathematics.departmentIds ?? 'null')).toEqual([3]);
@@ -171,13 +184,13 @@ describe('Tenant backfill importer', () => {
     expect(settings.enableLevelSubjectFiltering).toBe(true);
 
     // The school record carries the branding the portal header reads.
-    expect(school.brandColor).toBe('#00b32d');
-    expect(school.name).toBe('Devickys Gem Schools');
+    expect(school.brandColor).toBe('#2563eb');
+    expect(school.name).toBe('GlobePen Test Academy');
   });
 
   it('is idempotent: a second run creates nothing and rewrites nothing', async () => {
     await importTenantBackup({ backup: fixture(), ...baseOptions, apply: true });
-    const school = await prisma.school.findUniqueOrThrow({ where: { slug: 'devickys' } });
+    const school = await prisma.school.findUniqueOrThrow({ where: { slug: 'globe-pen-test-academy' } });
 
     const second = await importTenantBackup({ backup: fixture(), ...baseOptions, apply: true, force: true });
 
@@ -197,7 +210,7 @@ describe('Tenant backfill importer', () => {
     await importTenantBackup({ backup: fixture(), ...baseOptions, apply: true });
 
     const changed = fixture();
-    changed.students![0].fullName = 'David A. Adeyemi';
+    changed.students![0].fullName = 'Test Pupil One Updated';
     const summary = await importTenantBackup({ backup: changed, ...baseOptions, apply: true, force: true });
 
     expect(summary.counts.students.created).toBe(0);
@@ -205,12 +218,12 @@ describe('Tenant backfill importer', () => {
     expect(summary.counts.students.unchanged).toBe(1);
     expect(await prisma.student.count()).toBe(2);
 
-    const david = await prisma.student.findFirstOrThrow({ where: { admissionNumber: 'DGS-2024-042' } });
-    expect(david.fullName).toBe('David A. Adeyemi');
+    const david = await prisma.student.findFirstOrThrow({ where: { admissionNumber: 'GPA-2026-001' } });
+    expect(david.fullName).toBe('Test Pupil One Updated');
   });
 
   it('refuses to overwrite a populated tenant unless forced', async () => {
-    const populated = await prisma.school.create({ data: { name: 'Devickys Gem Schools', slug: 'devickys' } });
+    const populated = await prisma.school.create({ data: { name: 'GlobePen Test Academy', slug: 'globe-pen-test-academy' } });
     const existingClass = await prisma.class.create({
       data: { schoolId: populated.id, className: 'Existing Class', level: 'junior' },
     });
@@ -242,7 +255,7 @@ describe('Tenant backfill importer', () => {
     });
 
     await importTenantBackup({ backup: fixture(), ...baseOptions, apply: true });
-    const school = await prisma.school.findUniqueOrThrow({ where: { slug: 'devickys' } });
+    const school = await prisma.school.findUniqueOrThrow({ where: { slug: 'globe-pen-test-academy' } });
 
     expect(await prisma.student.count({ where: { schoolId: other.id } })).toBe(1);
     expect(await prisma.class.count({ where: { schoolId: other.id } })).toBe(1);
@@ -259,7 +272,7 @@ describe('Tenant backfill importer', () => {
   it('creates the tenant admin through the activation-token flow by default', async () => {
     const summary = await importTenantBackup({ backup: fixture(), ...baseOptions, apply: true });
 
-    expect(summary.admin?.email).toBe('admin@devickys.test');
+    expect(summary.admin?.email).toBe('admin@globepen-test-academy.test');
     expect(summary.admin?.created).toBe(true);
     expect(summary.admin?.activationUrl).toContain('/setup-password?token=');
 
@@ -268,7 +281,7 @@ describe('Tenant backfill importer', () => {
     expect(tokenMatch).not.toBeNull();
     const plaintextToken = tokenMatch![1];
 
-    const admin = await prisma.user.findUniqueOrThrow({ where: { email: 'admin@devickys.test' } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: 'admin@globepen-test-academy.test' } });
     expect(admin.role).toBe('admin');
     expect(admin.isAdmin).toBe(true);
     expect(admin.status).toBe('pending_activation');
@@ -291,11 +304,11 @@ describe('Tenant backfill importer', () => {
       apply: true,
     });
 
-    expect(summary.admin?.email).toBe('admin@devickys.test');
+    expect(summary.admin?.email).toBe('admin@globepen-test-academy.test');
     expect(summary.admin?.created).toBe(true);
     expect(summary.admin?.activationUrl).toBeNull();
 
-    const admin = await prisma.user.findUniqueOrThrow({ where: { email: 'admin@devickys.test' } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: 'admin@globepen-test-academy.test' } });
     expect(admin.role).toBe('admin');
     expect(admin.isAdmin).toBe(true);
     expect(admin.status).toBe('active');
@@ -313,9 +326,9 @@ describe('Tenant backfill helpers', () => {
     duplicating.subjects!.push({ ...duplicating.subjects![0] });
 
     const analysis = analyzeBackup(duplicating);
-    expect(analysis.duplicateAdmissions).toEqual(['DGS-2024-042']);
+    expect(analysis.duplicateAdmissions).toEqual(['GPA-2026-001']);
     expect(analysis.duplicateSubjectNames).toEqual(['Mathematics']);
-    expect(analysis.teacherNames).toEqual(['Mr Bello', 'Mrs Ade']);
+    expect(analysis.teacherNames).toEqual(['Teacher Alpha', 'Teacher Beta']);
   });
 
   it('preflight check reports clean when zero duplicate natural keys exist', async () => {
@@ -327,16 +340,16 @@ describe('Tenant backfill helpers', () => {
 
   it('parses CLI flags', () => {
     const options = parseCliOptions([
-      '--file=src/data/devickysBackup.json',
-      '--slug=devickys',
+      '--file=server/tests/fixtures/synthetic-backup.json',
+      '--slug=globe-pen-test-academy',
       '--admin-email=admin@school.test',
       '--apply',
       '--force',
       '--unknown-flag=ignored',
     ]);
 
-    expect(options.backupPath).toBe('src/data/devickysBackup.json');
-    expect(options.schoolSlug).toBe('devickys');
+    expect(options.backupPath).toBe('server/tests/fixtures/synthetic-backup.json');
+    expect(options.schoolSlug).toBe('globe-pen-test-academy');
     expect(options.adminEmail).toBe('admin@school.test');
     expect(options.apply).toBe(true);
     expect(options.force).toBe(true);
@@ -354,7 +367,7 @@ describe('Tenant backfill helpers', () => {
 
     expect(resolvedPath).toContain('synthetic-backup.json');
     expect(backup.settings).toHaveLength(1);
-    expect(backup.settings![0].schoolName).toBe('Devickys Gem Schools');
+    expect(backup.settings![0].schoolName).toBe('GlobePen Test Academy');
     expect(backup.classes).toHaveLength(1);
     expect(backup.subjects).toHaveLength(1);
     expect(backup.traits).toHaveLength(1);

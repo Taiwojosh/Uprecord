@@ -238,12 +238,16 @@ describe('GlobePen Multi-Tenancy, Hostname Resolution & Branding Suite', () => {
         });
       expect(inviteRes.status).toBe(201);
 
-      // Extract setupToken from database
+      // Extract raw setupToken from invite response
+      const token = inviteRes.body.setupToken;
+      expect(token).toBeDefined();
+
+      // Database persists only the SHA-256 hash, not the plaintext token
       const invitedUser = await prisma.user.findUnique({
         where: { email: 'teacher@alpha-academy.edu' },
       });
-      const token = invitedUser?.setupToken;
-      expect(token).toBeDefined();
+      expect(invitedUser?.setupToken).toBeNull();
+      expect(invitedUser?.setupTokenHash).toBeDefined();
 
       // 2. Attempt activation on Beta portal
       const activateOnBeta = await request(app)

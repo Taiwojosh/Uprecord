@@ -1,10 +1,11 @@
 {
+  "syntheticFixture": true,
   "settings": [
     {
-      "schoolName": "Devickys Gem Schools",
+      "schoolName": "GlobePen Test Academy",
       "schoolSlogan": "Knowledge is Power",
       "address": "123 Education Lane",
-      "brandColor": "#00b32d"
+      "brandColor": "#2563eb"
     }
   ],
   "classes": [

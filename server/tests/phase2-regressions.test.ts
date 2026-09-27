@@ -8,6 +8,7 @@ import { generateSlug, backfillSchoolSlugs } from '../src/scripts/backfillSlugs.
 
 let token: string;
 let schoolId: string;
+let invitedTeacherToken: string;
 const schoolHost = 'review-school.localhost';
 beforeAll(async () => {
   const r = await request(app).post('/api/auth/register').set('Host', 'localhost').send({
@@ -82,9 +83,10 @@ it('must reject the dedicated superadmin login on a school hostname', async () =
 it('must reject another school hostname when reading activation token details', async () => {
   const invite = await post('/api/auth/invite').send({ email: 'review-teacher@example.test', fullName: 'Review Teacher', role: 'teacher' });
   expect(invite.status).toBe(201);
-  const teacher = await prisma.user.findUnique({ where: { email: 'review-teacher@example.test' } });
+  invitedTeacherToken = invite.body.setupToken;
+  expect(invitedTeacherToken).toBeDefined();
   await prisma.school.create({ data: { name: 'Other Review School', slug: 'other-review-school' } });
-  const r = await request(app).get('/api/auth/verify-setup-token').query({ token: teacher!.setupToken })
+  const r = await request(app).get('/api/auth/verify-setup-token').query({ token: invitedTeacherToken })
     .set('Host', 'other-review-school.localhost');
   console.log('PROOF activation lookup host restriction', JSON.stringify({ status: r.status, schoolName: r.body.schoolName }));
   expect(r.status).toBe(403);
@@ -170,7 +172,7 @@ it('rejects non-admin management and school-host access to authenticated platfor
   expect((await request(app).get('/api/admin/schools').set('Host', schoolHost).set('Authorization', `Bearer ${login.body.token}`)).status).toBe(403);
   expect((await request(app).get('/api/admin/schools').set('Host', 'localhost').set('Authorization', `Bearer ${login.body.token}`)).status).toBe(200);
   const teacher = await prisma.user.findUniqueOrThrow({ where: { email: 'review-teacher@example.test' } });
-  await request(app).post('/api/auth/setup-password').set('Host', schoolHost).send({ token: teacher.setupToken, password: 'TeacherPassword123!' });
+  await request(app).post('/api/auth/setup-password').set('Host', schoolHost).send({ token: invitedTeacherToken, password: 'TeacherPassword123!' });
   const teacherLogin = await request(app).post('/api/auth/login').set('Host', schoolHost).send({ email: teacher.email, password: 'TeacherPassword123!' });
   expect(teacherLogin.status).toBe(200);
   expect((await request(app).get('/api/schools/management').set('Host', schoolHost).set('Authorization', `Bearer ${teacherLogin.body.token}`)).status).toBe(403);

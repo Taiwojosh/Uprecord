@@ -48,7 +48,7 @@ const UNIFORM_FORGOT_PASSWORD_RESPONSE = {
  * - School users requesting recovery from the central platform portal receive links on the
  *   approved platform origin.
  */
-function getApprovedOrigin(req: Request, school?: { slug?: string; customDomain?: string | null; customDomainVerified?: boolean } | null): string {
+function getApprovedOrigin(req: Request, school?: { slug?: string | null; customDomain?: string | null; customDomainVerified?: boolean } | null): string {
   const isProd = process.env.NODE_ENV === 'production';
   const configuredClient = process.env.CLIENT_URL;
 
@@ -379,7 +379,9 @@ router.post('/invite', authenticate, enforceTenant, requireAdmin, async (req: Re
 
     const { email, fullName, role, department, phone, studentId } = parsed.data;
 
-    // Generate secure 32-byte activation token
+    // Generate a secure 32-byte activation token and persist only its SHA-256 hash.
+    // The plaintext token is returned once over the authenticated admin channel and
+    // must never be written to the database.
     const setupToken = crypto.randomBytes(32).toString('hex');
     const setupTokenHash = crypto.createHash('sha256').update(setupToken).digest('hex');
     const setupTokenExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
@@ -395,7 +397,6 @@ router.post('/invite', authenticate, enforceTenant, requireAdmin, async (req: Re
         schoolId: req.user!.schoolId!,
         status: 'pending_activation',
         passwordHash: null,
-        setupToken, // Stores plaintext for backwards compatibility until migration script clears it
         setupTokenHash,
         setupTokenExpires,
       },
@@ -450,10 +451,7 @@ router.get('/verify-setup-token', async (req: Request, res: Response) => {
 
     const user = await prisma.user.findFirst({
       where: {
-        OR: [
-          { setupTokenHash: tokenHash },
-          { setupToken: token },
-        ],
+        setupTokenHash: tokenHash,
         setupTokenExpires: { gt: new Date() },
       },
       include: { school: { select: { id: true, name: true } } },
@@ -504,10 +502,7 @@ router.post('/setup-password', async (req: Request, res: Response) => {
     // Hostname and existence check before consuming
     const candidate = await prisma.user.findFirst({
       where: {
-        OR: [
-          { setupTokenHash: tokenHash },
-          { setupToken: token },
-        ],
+        setupTokenHash: tokenHash,
         setupTokenExpires: { gt: new Date() },
       },
       select: { id: true, schoolId: true },
@@ -530,10 +525,7 @@ router.post('/setup-password', async (req: Request, res: Response) => {
       const updateRes = await tx.user.updateMany({
         where: {
           id: candidate.id,
-          OR: [
-            { setupTokenHash: tokenHash },
-            { setupToken: token },
-          ],
+          setupTokenHash: tokenHash,
           setupTokenExpires: { gt: new Date() },
         },
         data: {
