@@ -162,3 +162,40 @@ work, in this order:
 Until step 2 ships, the client keeps reading its local copy — this import makes
 the data *recoverable and shared*, and is the prerequisite for making it *live*.
 
+
+
+## Production Migration Preflight Check (Read-Only)
+
+Before deploying migration `20260926000000_tenant_backfill_fidelity` to production, execute a read-only preflight check to verify that no natural key collisions exist that would block the creation of unique indexes:
+- `CREATE UNIQUE INDEX "Subject_schoolId_subjectName_key" ON "Subject"("schoolId", "subjectName");`
+- `CREATE UNIQUE INDEX "TraitDefinition_schoolId_traitName_key" ON "TraitDefinition"("schoolId", "traitName");`
+
+### Read-Only Preflight Queries
+
+Execute the following queries against the target database:
+
+```sql
+-- 1. Check for duplicate Subjects within the same school
+SELECT "schoolId", "subjectName", COUNT(*) AS duplicate_count
+FROM "Subject"
+WHERE "schoolId" IS NOT NULL AND "subjectName" IS NOT NULL
+GROUP BY "schoolId", "subjectName"
+HAVING COUNT(*) > 1;
+
+-- 2. Check for duplicate TraitDefinitions within the same school
+SELECT "schoolId", "traitName", COUNT(*) AS duplicate_count
+FROM "TraitDefinition"
+WHERE "schoolId" IS NOT NULL AND "traitName" IS NOT NULL
+GROUP BY "schoolId", "traitName"
+HAVING COUNT(*) > 1;
+```
+
+### Preflight Script Execution
+
+Run the provided read-only CLI checker:
+```bash
+npx tsx server/src/scripts/preflightTenantFidelity.ts
+```
+
+- **Exit code 0:** Zero collisions detected. Safe to proceed with `prisma migrate deploy`.
+- **Exit code 1:** Collisions detected. **DO NOT APPLY THE MIGRATION.** Escalation is required to manually inspect and reconcile the colliding rows before applying the migration. Never delete or alter production records automatically.

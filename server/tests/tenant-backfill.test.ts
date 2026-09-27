@@ -1,6 +1,8 @@
+import crypto from 'node:crypto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import prisma from '../src/lib/prisma.js';
 import { resetTestDatabase } from './setup.js';
+import { checkNaturalKeyDuplicates } from '../src/scripts/preflightTenantFidelity.js';
 import {
   importTenantBackup,
   analyzeBackup,
@@ -261,12 +263,46 @@ describe('Tenant backfill importer', () => {
     expect(summary.admin?.created).toBe(true);
     expect(summary.admin?.activationUrl).toContain('/setup-password?token=');
 
+    // Extract plaintext token from activation URL
+    const tokenMatch = summary.admin?.activationUrl?.match(/token=([a-f0-9]+)/);
+    expect(tokenMatch).not.toBeNull();
+    const plaintextToken = tokenMatch![1];
+
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: 'admin@devickys.test' } });
     expect(admin.role).toBe('admin');
     expect(admin.isAdmin).toBe(true);
     expect(admin.status).toBe('pending_activation');
     expect(admin.passwordHash).toBeNull();
-    expect(admin.setupToken).not.toBeNull();
+
+    // Verification of token security: plaintext is NOT persisted, only SHA-256 hash
+    expect(admin.setupToken).toBeNull();
+    expect(admin.setupTokenHash).not.toBeNull();
+    const expectedHash = crypto.createHash('sha256').update(plaintextToken).digest('hex');
+    expect(admin.setupTokenHash).toBe(expectedHash);
+    expect(admin.setupTokenExpires).not.toBeNull();
+    expect(admin.setupTokenExpires!.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it('password-supplied admin creation does not generate an activation token', async () => {
+    const summary = await importTenantBackup({
+      backup: fixture(),
+      ...baseOptions,
+      adminPassword: 'Secure#Password2026',
+      apply: true,
+    });
+
+    expect(summary.admin?.email).toBe('admin@devickys.test');
+    expect(summary.admin?.created).toBe(true);
+    expect(summary.admin?.activationUrl).toBeNull();
+
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: 'admin@devickys.test' } });
+    expect(admin.role).toBe('admin');
+    expect(admin.isAdmin).toBe(true);
+    expect(admin.status).toBe('active');
+    expect(admin.passwordHash).not.toBeNull();
+    expect(admin.setupToken).toBeNull();
+    expect(admin.setupTokenHash).toBeNull();
+    expect(admin.setupTokenExpires).toBeNull();
   });
 });
 
@@ -280,6 +316,13 @@ describe('Tenant backfill helpers', () => {
     expect(analysis.duplicateAdmissions).toEqual(['DGS-2024-042']);
     expect(analysis.duplicateSubjectNames).toEqual(['Mathematics']);
     expect(analysis.teacherNames).toEqual(['Mr Bello', 'Mrs Ade']);
+  });
+
+  it('preflight check reports clean when zero duplicate natural keys exist', async () => {
+    const { subjects, traits, isClean } = await checkNaturalKeyDuplicates();
+    expect(isClean).toBe(true);
+    expect(subjects).toHaveLength(0);
+    expect(traits).toHaveLength(0);
   });
 
   it('parses CLI flags', () => {

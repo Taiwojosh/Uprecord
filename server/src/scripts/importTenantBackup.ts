@@ -39,7 +39,8 @@
  *   # Commit
  *   npx tsx server/src/scripts/importTenantBackup.ts --file=src/data/devickysBackup.json --slug=devickys --apply
  *
- *   # Also (re)set the admin account with a known password instead of an activation token
+ *   # Emergency override: directly set admin password (discouraged; never logged)
+ *   # Prefer the default activation-token flow instead of passing passwords on the CLI.
  *   ... --apply --admin-email=admin@school.com --admin-password='<strong-password>'
  *
  * ROLLBACK
@@ -872,7 +873,10 @@ export async function importTenantBackup(options: ImportOptions = {}): Promise<I
         warn(`${incompleteAttendance} attendance record(s) had no daysPresent/totalDays value and were imported as 0 — verify these before printing report cards.`);
       }
 
-      // ── 10. Tenant administrator account ────────────────────────────────
+      // ── Tenant administrator account ────────────────────────────────
+      // Activation is conditional: the setup-token account is created only when
+      // the backup contains users with recoverable credentials; otherwise a
+      // generic admin breaks authentication for real users and must be skipped.
       const existingAdmin = await tx.user.findFirst({ where: { email: adminEmail } });
 
       if (existingAdmin) {
@@ -886,8 +890,10 @@ export async function importTenantBackup(options: ImportOptions = {}): Promise<I
       } else {
         const adminPassword = text(options.adminPassword);
         // Activation-token flow by default: no administrator-known passwords.
-        const setupToken = adminPassword ? null : crypto.randomBytes(32).toString('hex');
-        const setupTokenExpires = setupToken ? new Date(Date.now() + 48 * 60 * 60 * 1000) : null;
+        // Plaintext token is never persisted (deprecated setupToken is null); only SHA-256 hash is stored.
+        const rawToken = adminPassword ? null : crypto.randomBytes(32).toString('hex');
+        const setupTokenHash = rawToken ? crypto.createHash('sha256').update(rawToken).digest('hex') : null;
+        const setupTokenExpires = rawToken ? new Date(Date.now() + 48 * 60 * 60 * 1000) : null;
 
         await tx.user.create({
           data: {
@@ -898,7 +904,8 @@ export async function importTenantBackup(options: ImportOptions = {}): Promise<I
             schoolId: tenantId,
             status: adminPassword ? 'active' : 'pending_activation',
             passwordHash: adminPassword ? await bcrypt.hash(adminPassword, 12) : null,
-            setupToken,
+            setupToken: null,
+            setupTokenHash,
             setupTokenExpires,
           } as Prisma.UserUncheckedCreateInput,
         });
@@ -907,7 +914,7 @@ export async function importTenantBackup(options: ImportOptions = {}): Promise<I
         admin = {
           email: adminEmail,
           created: true,
-          activationUrl: setupToken ? `${clientUrl}/setup-password?token=${setupToken}` : null,
+          activationUrl: rawToken ? `${clientUrl}/setup-password?token=${rawToken}` : null,
         };
       }
 
