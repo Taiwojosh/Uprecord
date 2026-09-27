@@ -4,6 +4,8 @@ import { PublicBranding, GLOBEPEN_DEFAULTS } from '../config/branding';
 import { useAuth } from './AuthContext';
 import type { BrandingResponse } from '../../server/src/contracts/branding';
 import { brandContrast } from '../lib/brandContrast';
+import { PortalLoadingScreen } from '../components/ui/PortalLoadingScreen';
+import { PortalErrorScreen } from '../components/ui/PortalErrorScreen';
 
 interface BrandContextType {
   branding: PublicBranding;
@@ -47,6 +49,8 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const refreshBranding = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       const response = await api.get<BrandingResponse>(schoolId ? '/schools/identity' : '/schools/branding');
       if (response.data?.branding) {
@@ -89,8 +93,24 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const isSchoolPortal = Boolean(branding.schoolId);
 
-  if (error) return <main role="alert" className="p-10"><p>{error}</p><button className="underline mt-4" onClick={refreshBranding}>Retry</button></main>;
-  if (isLoading) return <main className="p-10" aria-busy="true">Loading school portal…</main>;
+  if (error) {
+    return (
+      <PortalErrorScreen
+        message={error}
+        onRetry={refreshBranding}
+        schoolName={branding.schoolName !== GLOBEPEN_DEFAULTS.schoolName ? branding.schoolName : undefined}
+      />
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <PortalLoadingScreen
+        message="Loading school portal…"
+        schoolName={branding.schoolName !== GLOBEPEN_DEFAULTS.schoolName ? branding.schoolName : undefined}
+      />
+    );
+  }
 
   return (
     <BrandContext.Provider value={{ branding, isLoading, isSchoolPortal, refreshBranding }}>

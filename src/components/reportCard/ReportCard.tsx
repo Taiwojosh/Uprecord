@@ -23,6 +23,7 @@ import { useLicense } from '../../hooks/useLicense';
 import { ClassicTemplate } from './templates/ClassicTemplate';
 import { ModernTemplate } from './templates/ModernTemplate';
 import { MinimalTemplate } from './templates/MinimalTemplate';
+import { getBrandContrastDetails } from './templates/types';
 
 interface ReportCardProps {
   student: IStudent;
@@ -125,11 +126,13 @@ export const ReportCard: React.FC<ReportCardProps> = ({
     return scores;
   }, [traitGrades]);
 
-  // A school brand color can be light (for example gold), so derive readable text for it.
+  // A school brand color can be light (for example gold), so derive readable text and styling details for it.
   const brandBackground = isPremium && settings.brandColor ? settings.brandColor : '#1f2937';
+  const contrastDetails = useMemo(() => getBrandContrastDetails(brandBackground), [brandBackground]);
   const brandStyle = {
-    backgroundColor: brandBackground,
-    color: brandContrast(brandBackground)
+    backgroundColor: contrastDetails.backgroundColor,
+    color: contrastDetails.textColor,
+    borderColor: contrastDetails.borderSubtle
   };
 
   const templateProps = {
@@ -159,6 +162,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
     psychomotorTraits,
     traitScores,
     brandStyle,
+    contrastDetails,
     isEditable,
     userRole,
     onUpdateRemark
@@ -166,13 +170,54 @@ export const ReportCard: React.FC<ReportCardProps> = ({
 
   const selectedTemplate = isPremium ? (settings.reportCardTemplate || 'classic') : 'classic';
 
-  if (selectedTemplate === 'modern') {
-    return <ModernTemplate {...templateProps} />;
-  }
+  const renderedTemplate = (() => {
+    if (selectedTemplate === 'modern') {
+      return <ModernTemplate {...templateProps} />;
+    }
+    if (selectedTemplate === 'minimal') {
+      return <MinimalTemplate {...templateProps} />;
+    }
+    return <ClassicTemplate {...templateProps} />;
+  })();
 
-  if (selectedTemplate === 'minimal') {
-    return <MinimalTemplate {...templateProps} />;
-  }
-
-  return <ClassicTemplate {...templateProps} />;
+  return (
+    <div className="report-card-viewport w-full max-w-full overflow-x-auto py-2 sm:py-6 flex justify-center print:p-0 print:m-0 print:overflow-visible print:block">
+      <style>{`
+        @page {
+          size: A4 portrait;
+          margin: 6mm 8mm;
+        }
+        @media print {
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .report-card-viewport {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
+          }
+          .report-card-sheet {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-height: auto !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            overflow: visible !important;
+          }
+          .avoid-break {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+        }
+      `}</style>
+      {renderedTemplate}
+    </div>
+  );
 };
