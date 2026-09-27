@@ -96,9 +96,11 @@ export const PlatformLandingPage: React.FC = () => {
             <button 
               type="button" 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+              className="p-2 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
               aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-navigation-menu"
+              id="mobile-menu-button"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -107,7 +109,7 @@ export const PlatformLandingPage: React.FC = () => {
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="sm:hidden border-t border-[var(--app-border,#e2e8f0)] dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-4 space-y-3">
+          <div className="sm:hidden border-t border-[var(--app-border,#e2e8f0)] dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-4 space-y-3" id="mobile-navigation-menu">
             <nav className="flex flex-col space-y-1 text-sm font-medium text-slate-700 dark:text-slate-300">
               <a 
                 href="#capabilities" 
@@ -159,7 +161,7 @@ export const PlatformLandingPage: React.FC = () => {
             
             {/* Status Indicator */}
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 mb-6">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
               <span>Multi-Tenant School Management Platform · Version 2026.1</span>
             </div>
 
@@ -224,12 +226,12 @@ export const PlatformLandingPage: React.FC = () => {
                 <span className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600" />
                 <span className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600" />
                 <span className="ml-2 font-mono text-[11px] text-slate-500 truncate max-w-[200px] sm:max-w-none">
-                  devickys.ifyspace.tech/registry
+                  demo.ifyspace.tech/registry
                 </span>
               </div>
               <div className="flex items-center gap-2 font-medium">
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Tenant: Devickys Gem School</span>
+                <span>Tenant: Demo School Workspace</span>
               </div>
             </div>
 
@@ -242,10 +244,10 @@ export const PlatformLandingPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">School Registry & Master Roster</h3>
                     <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800">
-                      Session 2025/2026
+                      Demonstration Session · 2025/2026
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">Verified institutional records across primary and college divisions.</p>
+                  <p className="text-xs text-slate-500 mt-1">Simulated operational records across primary and college divisions.</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs font-medium px-3 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
@@ -347,7 +349,7 @@ export const PlatformLandingPage: React.FC = () => {
                   </table>
                 </div>
                 <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 flex justify-between items-center">
-                  <span>Showing 3 verified records · School isolation active</span>
+                  <span>Showing 3 sample records · School tenant isolation active</span>
                   <a href="/login" className="font-semibold text-slate-700 dark:text-slate-300 hover:underline">Open Full Registry →</a>
                 </div>
               </div>
@@ -448,7 +450,7 @@ export const PlatformLandingPage: React.FC = () => {
                 Installable Web Experience (PWA)
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Install school workspaces directly to iOS, Android, or desktop devices. Operates in standalone mode with instantaneous launching and offline fallback notice.
+                Install school workspaces directly to iOS, Android, or desktop devices. Operates in standalone mode with lightweight offline fallback.
               </p>
             </div>
 
@@ -553,11 +555,11 @@ export const PlatformLandingPage: React.FC = () => {
                   Mobile Application Roadmap
                 </h3>
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                  In Development
+                  Planned
                 </span>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl">
-                GlobePen is currently installable on iOS and Android as a high-performance Progressive Web App. A companion native client focusing on offline roll-call attendance is currently in engineering.
+                GlobePen is currently installable on iOS and Android as a Progressive Web App. Dedicated branded school applications and a Kotlin-based companion client are planned for later release.
               </p>
             </div>
             <div className="shrink-0">
