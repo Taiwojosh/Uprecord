@@ -31,7 +31,7 @@ export const AuditPage: React.FC = () => {
   }, [searchTerm, user?.schoolId]) ?? [];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-1 sm:px-4 lg:px-8 py-4 font-sans">
+    <div className="w-full min-w-0 max-w-7xl mx-auto space-y-6 px-1 sm:px-4 lg:px-8 py-4 font-sans">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <PageHeader 
           title="Activity on this device"
@@ -75,8 +75,8 @@ export const AuditPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm">
-         <div className="overflow-x-auto">
+      <div className="w-full min-w-0 max-w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm">
+         <div className="hidden md:block max-w-full overflow-x-auto">
             <table className="w-full text-left border-collapse">
                <thead>
                   <tr className="bg-gray-50/50">
@@ -128,8 +128,20 @@ export const AuditPage: React.FC = () => {
                </tbody>
             </table>
          </div>
+         <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+           {logs.map(log => (
+             <article key={log.id} className="p-4 space-y-2">
+               <div className="flex items-start justify-between gap-3">
+                 <strong className="min-w-0 break-words text-sm text-slate-900 dark:text-slate-100">{log.action}</strong>
+                 <time className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{new Date(log.timestamp).toLocaleDateString()}</time>
+               </div>
+               <p className="break-words text-sm text-slate-600 dark:text-slate-300">{log.details}</p>
+               <p className="text-xs text-slate-500 dark:text-slate-400">{log.userName} · This device</p>
+             </article>
+           ))}
+         </div>
          {logs.length === 0 && (
-           <div className="p-24 text-center space-y-6">
+           <div className="px-4 py-12 sm:p-24 text-center space-y-6">
               <div className="w-20 h-20 bg-slate-50 text-slate-200 rounded-[2rem] flex items-center justify-center mx-auto">
                  <History size={40} />
               </div>
