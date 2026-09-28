@@ -267,8 +267,12 @@ export const AppLayout: React.FC = () => {
     }
   };
 
-    const [isOnline, setIsOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
+  const [isOnline, setIsOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
   const [isDesktop, setIsDesktop] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 1024 : true));
+  const [mobileResultsImmersive, setMobileResultsImmersive] = useState(true);
+  const isResultsPage = location.pathname.startsWith('/results');
+  const isFullScreen = isDesktop ? isImmersive : isResultsPage && mobileResultsImmersive;
+  const isEdgeToEdge = !isDesktop || isImmersive;
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -330,9 +334,9 @@ export const AppLayout: React.FC = () => {
         {/* Header with toggle-active slide-collapse animation */}
         <motion.header 
           animate={{ 
-            height: isImmersive && (isDesktop || location.pathname.startsWith('/results')) ? 0 : 'auto',
-            y: isImmersive && (isDesktop || location.pathname.startsWith('/results')) ? -80 : 0,
-            opacity: isImmersive && (isDesktop || location.pathname.startsWith('/results')) ? 0 : 1
+            height: isFullScreen ? 0 : 'auto',
+            y: isFullScreen ? -80 : 0,
+            opacity: isFullScreen ? 0 : 1
           }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
           className="h-16 lg:h-20 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between gap-2 px-4 sm:px-6 lg:px-8 shrink-0 z-30 shadow-sm shadow-gray-50/50 dark:shadow-slate-950/20 transition-colors duration-200"
@@ -522,8 +526,8 @@ export const AppLayout: React.FC = () => {
             {/* Immersive Mode Toggle Button - on mobile, only show when on Results page where extra room is needed */}
             <button
               type="button"
-              onClick={toggleImmersive}
-              className={`p-2.5 sm:p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 rounded-2xl transition-all border border-transparent hover:border-blue-50 dark:hover:border-slate-700 relative group ${location.pathname.startsWith('/results') ? 'flex' : 'hidden lg:flex'}`}
+              onClick={() => isDesktop ? toggleImmersive() : setMobileResultsImmersive(true)}
+              className={`p-2.5 sm:p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 rounded-2xl transition-all border border-transparent hover:border-blue-50 dark:hover:border-slate-700 relative group ${isResultsPage ? 'flex' : 'hidden lg:flex'}`}
               title="Toggle Immersive Mode"
               aria-label="Toggle focus mode"
             >
@@ -536,21 +540,21 @@ export const AppLayout: React.FC = () => {
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-[#F8F9FA] dark:bg-slate-950 min-h-0 h-full">
           <motion.div 
             animate={{
-              padding: isImmersive && (isDesktop || location.pathname.startsWith('/results')) ? '0px' : undefined,
-              maxWidth: isImmersive && (isDesktop || location.pathname.startsWith('/results')) ? '100%' : '1600px'
+              padding: isDesktop && isImmersive ? '0px' : undefined,
+              maxWidth: isEdgeToEdge ? '100%' : '1600px'
             }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             className={`mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300 w-full min-h-full flex flex-col ${
-              isImmersive && (isDesktop || location.pathname.startsWith('/results'))
+              isDesktop && isImmersive
                 ? 'p-0'
-                : 'p-3 sm:p-5 lg:p-8'
+                : 'p-3 sm:p-4 lg:p-8'
             }`}
           >
             {!isOnline && (
               <div role="status" className="mb-4 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs font-medium flex items-center justify-between gap-3 shadow-sm">
                 <div className="flex items-center gap-2">
                   <WifiOff size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
-                  <span>Working offline. Changes are saved locally on this device and will sync when your connection is restored.</span>
+                  <span>You're offline. Online records may be unavailable; drafts saved here will stay on this device.</span>
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 px-2 py-0.5 rounded-md text-amber-800 dark:text-amber-300 shrink-0">Offline</span>
               </div>
@@ -561,7 +565,7 @@ export const AppLayout: React.FC = () => {
 
         {/* Elegant Floating Escape Button for Immersive Mode */}
         <AnimatePresence>
-          {isImmersive && (isDesktop || location.pathname.startsWith('/results')) && (
+          {isFullScreen && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8, y: -20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -570,7 +574,7 @@ export const AppLayout: React.FC = () => {
               className="fixed top-6 right-6 z-40 flex items-center gap-2 pointer-events-auto"
             >
               <button
-                onClick={() => setImmersive(false)}
+                onClick={() => isDesktop ? setImmersive(false) : setMobileResultsImmersive(false)}
                 className="flex items-center gap-2 px-4 py-2.5 bg-slate-900/90 dark:bg-slate-800/90 hover:bg-slate-950 dark:hover:bg-slate-700 text-white border border-slate-700/50 backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 group font-bold text-xs uppercase tracking-wider"
                 title="Exit Immersive Mode (Press ESC)"
               >

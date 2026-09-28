@@ -21,7 +21,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   metaSpans
 }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div className="flex items-start gap-4">
         {Icon && (
           <div 
@@ -33,7 +33,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         )}
         <div className="flex flex-col">
           <h1 
-            className="text-xl sm:text-[1.75rem] font-bold text-slate-800 tracking-tight leading-tight"
+            className="text-xl sm:text-[1.75rem] font-bold text-slate-900 dark:text-slate-100 tracking-tight leading-tight"
             style={titleStyle}
           >
             {title}
@@ -41,14 +41,14 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
           {metaSpans && metaSpans.length > 0 ? (
             <div className="flex items-center gap-2 mt-1">
               {metaSpans.map((s, idx) => (
-                <span key={idx} style={s.style} className="text-gray-500 font-medium">
+                <span key={idx} style={s.style} className="text-slate-500 dark:text-slate-400 font-medium">
                   {s.text}
                 </span>
               ))}
             </div>
           ) : (
             subtitle && (
-              <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5 sm:mt-1 leading-snug">
+              <p className="text-sm text-slate-600 dark:text-slate-400 font-normal mt-0.5 sm:mt-1 leading-snug">
                 {subtitle}
               </p>
             )

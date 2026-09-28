@@ -2,29 +2,22 @@ import React, { useState } from 'react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { 
   History, 
-  ShieldCheck, 
   Search, 
-  Filter, 
-  User, 
   Clock, 
   Activity,
-  ChevronRight,
-  Database,
-  Trash2
 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { useToast } from '../context/ToastContext';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useAuth } from '../context/AuthContext';
 
 export const AuditPage: React.FC = () => {
-  const { showToast } = useToast();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
 
   const logs = useLiveQuery(async () => {
-    let collection = db.auditLogs.orderBy('timestamp').reverse();
-    const allLogs = await collection.toArray();
+    if (!user?.schoolId) return [];
+    const allLogs = await db.auditLogs.where('schoolId').equals(user.schoolId).toArray();
+    allLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     
     if (searchTerm) {
       const lower = searchTerm.toLowerCase();
@@ -35,63 +28,36 @@ export const AuditPage: React.FC = () => {
       );
     }
     return allLogs;
-  }, [searchTerm]) ?? [];
-
-  const handleClearLogs = async () => {
-    try {
-      await db.auditLogs.clear();
-      showToast('Audit trail cleared successfully', 'success');
-    } catch (e) {
-      showToast('Failed to clear logs', 'error');
-    } finally {
-      setIsClearConfirmOpen(false);
-    }
-  };
+  }, [searchTerm, user?.schoolId]) ?? [];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 font-sans">
+    <div className="space-y-6 max-w-7xl mx-auto px-1 sm:px-4 lg:px-8 py-4 font-sans">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <PageHeader 
-          title="System Audit Trail" 
-          subtitle="Transparent history of all administrative and registry actions" 
+          title="Activity on this device"
+          subtitle="Recent subject, attendance, and settings changes recorded in this browser"
         />
-        <button 
-          onClick={() => setIsClearConfirmOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-semibold rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all border border-rose-200/60 dark:border-rose-900/60 shadow-sm"
-        >
-          <Trash2 size={14} />
-          Clear Audit Trail
-        </button>
       </div>
 
+      <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+        This is a device-level activity list, not a complete school-wide security log. It records selected
+        subject, attendance, and settings actions performed here. Older entries without a school tag are hidden.
+      </p>
+
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
          <AuditStatsCard 
            icon={Activity} 
-           label="Total Events" 
+           label="Recorded events"
            value={logs.length} 
-           detail="Indexed Actions"
+           detail="For this school on this device"
            color="blue"
          />
          <AuditStatsCard 
-           icon={ShieldCheck} 
-           label="Security Triggers" 
-           value={logs.filter(l => l.action.toLowerCase().includes('admin') || l.action.toLowerCase().includes('delete')).length} 
-           detail="Critical Events"
-           color="amber"
-         />
-         <AuditStatsCard 
            icon={Clock} 
-           label="Uptime" 
-           value="100%" 
-           detail="System Health"
-           color="emerald"
-         />
-         <AuditStatsCard 
-           icon={Database} 
-           label="Storage" 
-           value={`${(JSON.stringify(logs).length / 1024).toFixed(1)} KB`} 
-           detail="Local Registry"
+           label="Latest event"
+           value={logs[0] ? new Date(logs[0].timestamp).toLocaleDateString() : 'None yet'}
+           detail="Most recent recorded action"
            color="slate"
          />
       </div>
@@ -154,7 +120,7 @@ export const AuditPage: React.FC = () => {
                        </td>
                        <td className="px-5 py-3.5 text-right">
                           <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-lg text-[0.5625rem] font-black text-gray-400 uppercase tracking-widest border border-gray-100">
-                             Local Master
+                             This device
                           </div>
                        </td>
                     </tr>
@@ -168,20 +134,13 @@ export const AuditPage: React.FC = () => {
                  <History size={40} />
               </div>
               <div className="max-w-xs mx-auto">
-                 <h3 className="text-lg font-black text-gray-900 uppercase italic">Clean Registry</h3>
-                 <p className="text-gray-400 text-sm font-medium leading-relaxed">No actions have been recorded in the audit trail yet.</p>
+                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">No activity here yet</h3>
+                 <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">Selected actions on this device will appear here.</p>
               </div>
            </div>
          )}
       </div>
 
-      <ConfirmDialog 
-        isOpen={isClearConfirmOpen}
-        title="Wipe Audit Registry"
-        message="This will permanently delete all event logs. This action cannot be reversed and should only be performed for system maintenance."
-        onConfirm={handleClearLogs}
-        onClose={() => setIsClearConfirmOpen(false)}
-      />
     </div>
   );
 };

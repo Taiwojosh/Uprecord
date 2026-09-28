@@ -5,11 +5,12 @@ export function useAudit() {
   const { user } = useAuth();
 
   const logAction = async (action: string, details: string) => {
-    if (!user) return;
+    if (!user?.schoolId) return;
     
     try {
       await db.auditLogs.add({
         userId: user.id?.toString() || 'unknown',
+        schoolId: user.schoolId,
         userName: user.fullName || user.email,
         action,
         details,

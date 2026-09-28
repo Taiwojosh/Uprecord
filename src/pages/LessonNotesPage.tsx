@@ -402,6 +402,9 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
   const [isSaving, setIsSaving] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'dirty' | 'saving' | 'synced' | 'error'>('idle');
   const [loadedKey, setLoadedKey] = useState<string>('');
+  const editRevisionRef = useRef(0);
+  const selectedRecordKey = selectedSubjectId && selectedClassId && session
+    ? `${selectedSubjectId}-${selectedClassId}-${term}-${session}` : '';
   const [showRibbon, setShowRibbon] = useState<boolean>(true);
 
   // Active combined tab state (SOW or NOTES) defaulting to route Prop
@@ -545,6 +548,7 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
   // Sync / Merge data when curriculum or existing notes load or change
   useEffect(() => {
     if (!selectedSubjectId || !selectedClassId || !session) return;
+    if (curriculum === undefined || existingNotes === undefined) return;
     const currentKey = `${selectedSubjectId}-${selectedClassId}-${term}-${session}`;
     
     if (currentKey !== loadedKey) {
@@ -593,13 +597,14 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
 
   // Debounced Autosave effect for Lesson Notes and Scheme of Work concurrently!
   useEffect(() => {
-    if (autosaveStatus !== 'dirty') return;
-
     if (selectedSubjectId && selectedClassId && session && noteWeeks.length > 0) {
       const draftKey = `draft_lesson_notes_${selectedSubjectId}_${selectedClassId}_${term}_${session}`;
-      localStorage.setItem(draftKey, JSON.stringify(noteWeeks));
+      if (autosaveStatus === 'dirty' || autosaveStatus === 'saving') {
+        localStorage.setItem(draftKey, JSON.stringify(noteWeeks));
+      }
     }
 
+    if (autosaveStatus !== 'dirty') return;
     if (isStudent || isAdmin || isAttendanceRestricted) return;
 
     const timeoutId = setTimeout(async () => {
@@ -619,6 +624,7 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
       }
       
       setAutosaveStatus('saving');
+      const savingRevision = editRevisionRef.current;
       try {
         // 1. Save Lesson Notes
         const notesData: Omit<ILessonNote, 'id'> = {
@@ -677,8 +683,12 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
           await db.curriculum.add(currData);
         }
 
-        setAutosaveStatus('synced');
-        localStorage.removeItem(`draft_lesson_notes_${selectedSubjectId}_${selectedClassId}_${term}_${session}`);
+        if (savingRevision === editRevisionRef.current) {
+          setAutosaveStatus('synced');
+          localStorage.removeItem(`draft_lesson_notes_${selectedSubjectId}_${selectedClassId}_${term}_${session}`);
+        } else {
+          setAutosaveStatus('dirty');
+        }
       } catch (error) {
         console.error('Autosave failed:', error);
         setAutosaveStatus('error');
@@ -713,6 +723,7 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
     
     setIsSaving(true);
     setAutosaveStatus('saving');
+    const savingRevision = editRevisionRef.current;
     try {
       // 1. Save Lesson Notes
       const notesData: Omit<ILessonNote, 'id'> = {
@@ -781,8 +792,12 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
       });
 
       showToast('Scheme and Lesson notes saved successfully', 'success');
-      setAutosaveStatus('synced');
+      if (savingRevision === editRevisionRef.current) {
+        setAutosaveStatus('synced');
         localStorage.removeItem(`draft_lesson_notes_${selectedSubjectId}_${selectedClassId}_${term}_${session}`);
+      } else {
+        setAutosaveStatus('dirty');
+      }
     } catch (error) {
       showToast('Failed to save data', 'error');
       setAutosaveStatus('error');
@@ -798,8 +813,9 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
     const index = updated.findIndex(w => w.week === activeWeek);
     if (index !== -1) {
       updated[index] = { ...updated[index], [field]: value, updatedAt: new Date().toISOString() };
+      editRevisionRef.current += 1;
       setNoteWeeks(updated);
-      setAutosaveStatus('dirty');
+      if (autosaveStatus !== 'saving') setAutosaveStatus('dirty');
     }
   };
 
@@ -809,8 +825,9 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
     const index = updated.findIndex(w => w.week === activeWeek);
     if (index !== -1) {
       updated[index] = { ...updated[index], completed: done, updatedAt: new Date().toISOString() };
+      editRevisionRef.current += 1;
       setNoteWeeks(updated);
-      setAutosaveStatus('dirty');
+      if (autosaveStatus !== 'saving') setAutosaveStatus('dirty');
     }
   };
 
@@ -849,7 +866,7 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
   }, [noteWeeks]);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 animate-fade-in font-sans">
+    <div className="space-y-6 max-w-7xl mx-auto px-1 sm:px-4 lg:px-8 py-4 animate-fade-in font-sans">
       
       {/* Attendance Guard Block */}
       {isAttendanceRestricted && <AttendanceRestrictionBanner />}
@@ -986,7 +1003,7 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
                 </div>
               </div>
             </div>
-          ) : curriculum === undefined ? (
+          ) : loadedKey !== selectedRecordKey ? (
             <div className="flex flex-col items-center justify-center p-20 bg-white rounded-[3.5rem] border border-slate-50/65">
               <Spinner size="lg" />
               <p className="text-slate-400 font-bold uppercase tracking-widest text-[0.625rem] mt-4">Loading Scheme & Lesson Notes...</p>

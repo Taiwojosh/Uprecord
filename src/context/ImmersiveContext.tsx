@@ -10,10 +10,7 @@ const ImmersiveContext = createContext<ImmersiveContextType | undefined>(undefin
 
 export const ImmersiveProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isImmersive, setIsImmersive] = useState<boolean>(() => {
-    const saved = localStorage.getItem('immersive_mode');
-    if (saved !== null) return saved === 'true';
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) return true;
-    return false;
+    return localStorage.getItem('immersive_mode') === 'true';
   });
 
   const setImmersive = (value: boolean) => {
@@ -28,7 +25,7 @@ export const ImmersiveProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Keyboard shortcut Listener: Escape key to exit immersive mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isImmersive) {
+      if (e.key === 'Escape' && isImmersive && window.innerWidth >= 1024) {
         setImmersive(false);
       }
     };
