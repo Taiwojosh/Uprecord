@@ -3,6 +3,14 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+/* The global heading defaults are dark; the school's dark website needs
+   readable headings. Utility colours on selected headings still take priority. */
+@layer base {
+  .devickys-landing :is(h1, h2, h3, h4) {
+    color: #fff;
+  }
+}
+
 /* School identity accents apply to the portal, independently of its hostname. */
 .school-portal [data-school-workspace] :is(.bg-blue-600, .bg-blue-700, .bg-indigo-600, .bg-blue-950) {
   background-color: var(--brand-primary);

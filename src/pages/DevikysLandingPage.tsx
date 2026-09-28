@@ -26,7 +26,7 @@ export const DevikysLandingPage = ({branding}:{branding:PublicBranding}) => {
  const secondaryColor = branding.secondaryColor?.trim() || '#111827';
  const onPrimaryColor = brandContrast(primaryColor);
  const portalLabel = branding.portalTitle?.trim() || 'School Portal';
- return <div className="bg-black text-white min-h-screen">
+ return <div className="devickys-landing bg-black text-white min-h-screen">
  <header className="sticky top-0 z-40 bg-black/95 border-b border-yellow-300/20"><div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
  <a href="#home" className="flex items-center gap-3 min-w-0"><Logo size={44} variant="icon" customSchoolName={schoolName} customLogoUrl={branding.logoUrl || FALLBACK_LOGO} /><span className="font-black text-base lg:text-xl">{schoolName}</span></a>
  <nav aria-label="Main navigation" className="hidden xl:flex items-center gap-6">{nav.map(([id,label])=><a key={id} href={`#${id}`} className="hover:text-yellow-300">{label}</a>)}</nav>
