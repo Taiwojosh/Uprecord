@@ -111,7 +111,7 @@ it('keeps domain challenges private and restores pending and verified settings o
   r = await getSettings();
   expect(r.body.verificationStatus).toBe('ownership_verified');
   expect(r.body.verifiedAt).toBeTruthy();
-  expect((await request(app).delete('/api/schools/custom-domain').set('Host', schoolHost).set('Authorization', `Bearer ${token}`)).status).toBe(200);
+  expect((await request(app).delete('/api/schools/custom-domain').set('Host', schoolHost).set('Authorization', `Bearer ${token}`).send({ confirmDomain: 'portal.reload.example' })).status).toBe(200);
   r = await getSettings();
   expect(r.body.domain).toBeNull();
   expect(r.body.dnsChallenge).toBeNull();
@@ -128,7 +128,7 @@ it.each(['remove', 'rotate'])('rejects a stale DNS response after challenge %s',
   const pending = post('/api/schools/custom-domain/verify').send({}).then(r => r);
   await began;
   if (action === 'rotate') await register('portal.concurrent.example');
-  else await request(app).delete('/api/schools/custom-domain').set('Host', schoolHost).set('Authorization', `Bearer ${token}`);
+  else await request(app).delete('/api/schools/custom-domain').set('Host', schoolHost).set('Authorization', `Bearer ${token}`).send({ confirmDomain: 'portal.concurrent.example' });
   release([[challenge]]);
   expect((await pending).status).toBe(409);
   expect((await prisma.school.findUnique({ where: { id: schoolId } }))?.customDomainVerified).toBe(false);

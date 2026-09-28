@@ -364,6 +364,14 @@ describe('SeferNote Multi-Tenancy, Hostname Resolution & Branding Suite', () => 
       expect(activeRes.body.branding.schoolId).toBe(schoolAlpha.id);
       expect(activeRes.body.branding.schoolName).toBe('Alpha Academy');
       expect(activeRes.body.branding.customDomain).toBe(customDomain);
+
+      // Disconnecting from the custom host would immediately strand this session.
+      const fromCustomHost = await request(app)
+        .delete('/api/schools/custom-domain')
+        .set('Host', customDomain)
+        .set('Authorization', `Bearer ${adminAlphaToken}`)
+        .send({ confirmDomain: customDomain });
+      expect(fromCustomHost.status).toBe(409);
     });
 
     it('serves the exact same branding on school subdomain and verified custom domain', async () => {
@@ -411,10 +419,18 @@ describe('SeferNote Multi-Tenancy, Hostname Resolution & Branding Suite', () => 
     });
 
     it('Deleting custom domain clears domain and verification status', async () => {
-      const delRes = await request(app)
+      const connectedDomain = (await prisma.school.findUnique({ where: { id: schoolAlpha.id } }))?.customDomain;
+      expect(connectedDomain).toBeTruthy();
+      const accidental = await request(app)
         .delete('/api/schools/custom-domain')
         .set('Host', 'alpha-academy.localhost')
         .set('Authorization', `Bearer ${adminAlphaToken}`);
+      expect(accidental.status).toBe(400);
+      const delRes = await request(app)
+        .delete('/api/schools/custom-domain')
+        .set('Host', 'alpha-academy.localhost')
+        .set('Authorization', `Bearer ${adminAlphaToken}`)
+        .send({ confirmDomain: connectedDomain });
 
       expect(delRes.status).toBe(200);
 

@@ -36,6 +36,9 @@ export const DomainBrandingManager: React.FC = () => {
   const [isSettingDomain, setIsSettingDomain] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
+  const [isRemoveOpen, setIsRemoveOpen] = useState(false);
+  const [removeConfirmation, setRemoveConfirmation] = useState('');
+  const [isRemoving, setIsRemoving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fetchDomainInfo = useCallback(async () => {
@@ -166,14 +169,15 @@ export const DomainBrandingManager: React.FC = () => {
   };
 
   const handleRemoveDomain = async () => {
-    if (!window.confirm('Are you sure you want to detach this custom domain? The portal will revert to your school subdomain.')) {
-      return;
-    }
-
+    const currentDomain = domainInfo?.customDomain;
+    if (!currentDomain || removeConfirmation !== currentDomain) return;
+    setIsRemoving(true);
     try {
-      await api.delete('/schools/custom-domain');
-      showToast('Custom domain removed.', 'success');
+      await api.delete('/schools/custom-domain', { data: { confirmDomain: currentDomain } });
+      showToast('School address disconnected. Use your school subdomain to sign in.', 'success');
       setDomainInput('');
+      setRemoveConfirmation('');
+      setIsRemoveOpen(false);
       setDomainInfo((prev) => prev ? {
         ...prev,
         customDomain: null,
@@ -185,6 +189,8 @@ export const DomainBrandingManager: React.FC = () => {
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Failed to remove custom domain.';
       showToast(msg, 'error');
+    } finally {
+      setIsRemoving(false);
     }
   };
 
@@ -291,9 +297,9 @@ export const DomainBrandingManager: React.FC = () => {
               <Globe className="w-6 h-6 text-sky-600" />
             </div>
             <div>
-              <h2 className="text-xl font-black tracking-tight text-gray-900">Custom Domain Readiness</h2>
+              <h2 className="text-xl font-black tracking-tight text-gray-900">School web address</h2>
               <button type="button" onClick={fetchDomainInfo} className="text-sm underline">Reload domain settings</button>
-              <p className="text-xs text-gray-400 font-medium">Link your school's own FQDN (e.g. portal.myschool.edu)</p>
+              <p className="text-xs text-gray-400 font-medium">Connect your school's own address (for example, portal.myschool.edu)</p>
             </div>
           </div>
 
@@ -351,17 +357,42 @@ export const DomainBrandingManager: React.FC = () => {
               {domainInfo?.customDomain && (
                 <button
                   type="button"
-                  onClick={handleRemoveDomain}
+                  onClick={() => { setIsRemoveOpen(true); setRemoveConfirmation(''); }}
                   className="px-4 py-3.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/50 rounded-2xl transition-all text-xs font-bold flex items-center justify-center gap-1.5 shrink-0"
                   title="Detach Custom Domain"
                 >
                   <Trash2 className="w-4 h-4" />
-                  <span>Remove</span>
+                  <span>Disconnect address</span>
                 </button>
               )}
             </div>
           </div>
         </form>
+
+        {isRemoveOpen && domainInfo?.customDomain && (
+          <div className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-5">
+            <p className="text-sm font-semibold text-rose-900">Disconnect {domainInfo.customDomain}?</p>
+            <p className="text-sm text-rose-800">
+              People using this address will lose access to the portal immediately. The school's data stays in place.
+              Open your school subdomain first, then type the current address below to confirm.
+            </p>
+            <label htmlFor="confirm-domain-removal" className="block text-sm font-medium text-rose-900">
+              Type {domainInfo.customDomain}
+            </label>
+            <input id="confirm-domain-removal" type="text" autoComplete="off" value={removeConfirmation}
+              onChange={(event) => setRemoveConfirmation(event.target.value)}
+              className="w-full rounded-xl border border-rose-300 bg-white px-4 py-3 text-sm" />
+            <div className="flex flex-wrap gap-3">
+              <button type="button" onClick={handleRemoveDomain}
+                disabled={isRemoving || removeConfirmation !== domainInfo.customDomain}
+                className="rounded-xl bg-rose-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                {isRemoving ? 'Disconnecting…' : 'Disconnect address'}
+              </button>
+              <button type="button" onClick={() => { setIsRemoveOpen(false); setRemoveConfirmation(''); }}
+                className="rounded-xl border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-900">Cancel</button>
+            </div>
+          </div>
+        )}
 
         {domainInfo?.customDomainVerified && (
           <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-100 text-xs space-y-1.5">

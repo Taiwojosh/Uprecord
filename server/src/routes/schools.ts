@@ -446,9 +446,22 @@ router.get('/manifest', async (req: Request, res: Response) => {
 router.delete('/custom-domain', authenticate, enforceTenant, requireAdmin, async (req: Request, res: Response) => {
   try {
     const schoolId = req.user!.schoolId!;
+    const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { customDomain: true } });
+    if (!school?.customDomain) {
+      res.status(404).json({ error: 'No custom domain is connected.' });
+      return;
+    }
+    if (req.hostname.toLowerCase() === school.customDomain.toLowerCase()) {
+      res.status(409).json({ error: 'Open your school subdomain before disconnecting this address.' });
+      return;
+    }
+    if (req.body?.confirmDomain !== school.customDomain) {
+      res.status(400).json({ error: 'Type the connected domain exactly to confirm removal.' });
+      return;
+    }
 
-    await prisma.school.update({
-      where: { id: schoolId },
+    const updated = await prisma.school.updateMany({
+      where: { id: schoolId, customDomain: school.customDomain },
       data: {
         customDomain: null,
         customDomainVerified: false,
@@ -456,6 +469,10 @@ router.delete('/custom-domain', authenticate, enforceTenant, requireAdmin, async
         domainVerifiedAt: null,
       },
     });
+    if (updated.count !== 1) {
+      res.status(409).json({ error: 'Domain changed. Reload settings and try again.' });
+      return;
+    }
 
     res.json({ message: 'Custom domain removed successfully.' });
   } catch (err) {
