@@ -6,7 +6,7 @@
 - The production container reports four applied migrations and an up-to-date schema **relative to that container**. Its image contains only the four migrations through `20260924123000_legacy_import_receipt`.
 - `integration/globepen-next` at `f0b6552` contains the professional public landing page, report card refinements, and portal loading/recovery screens. These changes are included in candidate branch `codex/devickys-v1-learning`.
 - The learning candidate adds `20260927000000_cbt_and_live_lessons` for server-backed CBT and class scheduling. It is not applied in production. A disposable SQLite database was upgraded from the four current migrations to this fifth migration; Prisma reported all five applied and the schema up to date. No production data was used.
-- The earlier learning candidate passed 109 of 109 API tests on a fresh disposable SQLite database in `/home/hermes/workspaces/sefernote-validation`, and TypeScript and frontend build passed. The latest release-readiness branch must pass these gates again after its final change.
+- Release-readiness code commit `68bd19d` passed all 110 API tests, `npm run lint` (`tsc --noEmit`), and `npm run build` in an isolated clean extraction at `/home/hermes/workspaces/sefernote-release-verify-68bd19d`. The build exited successfully with non-blocking bundle-size warnings. The local and pushed branch refs matched at this commit. No production data was used.
 - New invitations now store an activation-token hash, and student invites require a linked active pupil in the same school. A test confirms no plaintext token is stored for new invites.
 - A headless Chromium check of the built candidate rendered the platform and DEVICKYS landing pages at 1440px and 390px, in light and dark modes, and the DEVICKYS login at both widths. There were no page errors or horizontal overflows, and the school mobile menu opened. The check used a synthetic branding response and unauthenticated routes; it did not exercise real accounts. A screenshot review exposed dark headings on the school's dark site; `hermes/sefernote-release-readiness` fixes their contrast and the built page was rechecked.
 
@@ -21,8 +21,7 @@
 
 ## Recommended release order
 
-1. Re-run tests, TypeScript, and build on the exact release-readiness commit; compare local and remote Git refs.
-2. Independently review the final diff and migration before rollout. Production deployment is a separate user action under `AGENTS.md`.
+1. Independently review the final diff and migration before rollout. Production deployment is a separate user action under `AGENTS.md`.
 3. At rollout, stop writes, take a verified consistent SQLite backup, preserve the current container image and static release, apply only the fifth CBT/classroom migration, and publish the matching API image and static assets as one versioned release. Keep rollback paths ready. Do not run tests against production data.
 4. Smoke-check all three hosts, DEVICKYS branding/login, API health, CBT/classroom routes, and static file permissions. Use school-admin invitations to activate one assigned teacher and one pupil, then test create/publish/take/grade CBT and schedule/start/join/end a class with an external meeting link.
 5. Configure LiveKit and run a two-person media/capacity test before enabling embedded classroom sessions.
