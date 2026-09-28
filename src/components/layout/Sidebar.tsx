@@ -123,6 +123,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, mobile = fals
         title: 'Teaching & learning',
         items: [
           { to: '/results', label: 'Results', icon: BarChart3 },
+          { to: '/cbt', label: 'CBT Assessments', icon: HelpCircle },
+          { to: '/live-classroom', label: 'Live Classroom', icon: Video },
           { to: '/lesson-planner', label: 'Lesson Planner', icon: BookOpenCheck },
           { to: '/attendance', label: 'Attendance', icon: Clock },
           { to: '/reports', label: 'Reports', icon: Printer },
