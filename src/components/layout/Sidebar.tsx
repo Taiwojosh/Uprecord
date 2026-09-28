@@ -133,6 +133,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, mobile = fals
       {
         title: 'School tools',
         items: [
+          { to: '/account-creator', label: 'Portal Accounts', icon: UserCheck },
           { to: '/communication', label: 'Communication', icon: Bell },
           { to: '/settings', label: 'Settings', icon: Settings },
           { to: '/manual', label: 'Help & guide', icon: BookOpenCheck },

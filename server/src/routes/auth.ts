@@ -417,14 +417,17 @@ router.post('/invite', authenticate, enforceTenant, requireAdmin, async (req: Re
     const origin = getApprovedOrigin(req);
     const setupUrl = `${origin}/setup-password?token=${setupToken}`;
 
-    // Dispatch via outbound mail dispatcher / local development sink
-    await sendSystemEmail({
-      to: user.email,
-      subject: 'Invitation to SeferNote School Portal',
-      template: 'invitation',
-      link: setupUrl,
-      recipientName: fullName,
-    });
+    // Manual delivery is supported when this deployment has no mail transport.
+    // The authorized admin receives the single-use URL in this response.
+    if (process.env.EMAIL_DELIVERY_MODE !== 'disabled') {
+      await sendSystemEmail({
+        to: user.email,
+        subject: 'Invitation to SeferNote School Portal',
+        template: 'invitation',
+        link: setupUrl,
+        recipientName: fullName,
+      });
+    }
 
     res.status(201).json({
       message: 'User invited successfully. Share the activation link with the user to set their password.',

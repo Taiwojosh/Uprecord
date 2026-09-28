@@ -74,4 +74,19 @@ describe('Persistent pilot registry', () => {
     expect(user.setupTokenHash).toMatch(/^[0-9a-f]{64}$/);
     expect((await invite('duplicate-pupil@pilot.test', 'student', own.id)).status).toBe(409);
   });
+  it('returns a manual activation link when email delivery is disabled', async () => {
+    const previous = process.env.EMAIL_DELIVERY_MODE;
+    process.env.EMAIL_DELIVERY_MODE = 'disabled';
+    try {
+      const result = await api('post', '/api/auth/invite').send({ email: 'manual@pilot.test', fullName: 'Manual Teacher', role: 'teacher' });
+      expect(result.status).toBe(201);
+      expect(result.body.setupUrl).toContain('/setup-password?token=');
+      const user = await prisma.user.findUniqueOrThrow({ where: { email: 'manual@pilot.test' } });
+      expect(user.setupToken).toBeNull();
+      expect(user.setupTokenHash).toMatch(/^[0-9a-f]{64}$/);
+    } finally {
+      if (previous === undefined) delete process.env.EMAIL_DELIVERY_MODE;
+      else process.env.EMAIL_DELIVERY_MODE = previous;
+    }
+  });
 });

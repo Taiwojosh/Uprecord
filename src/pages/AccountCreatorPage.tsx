@@ -6,6 +6,8 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 
+type PupilOption = { id: number; fullName: string; admissionNumber: string; status: string; email?: string | null };
+
 export const AccountCreatorPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -17,11 +19,28 @@ export const AccountCreatorPage: React.FC = () => {
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [setupUrl, setSetupUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [pupils, setPupils] = useState<PupilOption[]>([]);
+  const [selectedPupilId, setSelectedPupilId] = useState<number | null>(null);
+  const [pupilsError, setPupilsError] = useState(false);
+
+  React.useEffect(() => {
+    if (newUserRole !== 'student') return;
+    let active = true;
+    setPupilsError(false);
+    api.get('/students').then(({ data }) => {
+      if (active) setPupils((data.students as PupilOption[]).filter(pupil => pupil.status === 'Active'));
+    }).catch(() => { if (active) setPupilsError(true); });
+    return () => { active = false; };
+  }, [newUserRole]);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserEmail || !newUserFullName) {
       showToast('Please fill all user fields', 'error');
+      return;
+    }
+    if (newUserRole === 'student' && !selectedPupilId) {
+      showToast('Select an active pupil before creating a student account.', 'error');
       return;
     }
     
@@ -32,13 +51,15 @@ export const AccountCreatorPage: React.FC = () => {
         email: newUserEmail,
         fullName: newUserFullName,
         role: newUserRole,
+        ...(newUserRole === 'student' ? { studentId: selectedPupilId } : {}),
       });
 
-      const url = `${window.location.origin}${res.data.setupUrl}`;
+      const url = new URL(res.data.setupUrl, window.location.origin).toString();
       setSetupUrl(url);
       showToast(`${newUserRole.toUpperCase()} account created! Invitation link ready.`, 'success');
       setNewUserEmail('');
       setNewUserFullName('');
+      setSelectedPupilId(null);
     } catch (err: any) {
       showToast(err.response?.data?.error || err.message || 'Failed to create user', 'error');
     } finally {
@@ -111,6 +132,31 @@ export const AccountCreatorPage: React.FC = () => {
               </button>
             </div>
           </div>
+          {newUserRole === 'student' && (
+            <div className="space-y-2">
+              <label htmlFor="account-pupil" className="text-sm font-semibold text-gray-700">Link to an active pupil</label>
+              <select
+                id="account-pupil"
+                value={selectedPupilId ?? ''}
+                onChange={event => {
+                  const id = Number(event.target.value);
+                  const pupil = pupils.find(item => item.id === id);
+                  setSelectedPupilId(pupil ? id : null);
+                  if (pupil) {
+                    setNewUserFullName(pupil.fullName);
+                    if (pupil.email) setNewUserEmail(pupil.email);
+                  }
+                }}
+                required
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
+              >
+                <option value="">Select pupil</option>
+                {pupils.map(pupil => <option key={pupil.id} value={pupil.id}>{pupil.fullName} · {pupil.admissionNumber}</option>)}
+              </select>
+              {pupilsError && <p role="alert" className="text-sm text-red-700">Could not load the school roster. Reload and try again.</p>}
+              {!pupilsError && pupils.length === 0 && <p className="text-sm text-gray-600">No active pupils found for this school.</p>}
+            </div>
+          )}
           <button 
             type="submit" 
             disabled={isCreatingUser}
