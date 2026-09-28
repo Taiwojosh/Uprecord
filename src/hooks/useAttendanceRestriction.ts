@@ -14,19 +14,19 @@ export function useAttendanceRestriction(): AttendanceRestrictionResult {
 
   const result = useLiveQuery(async () => {
     // Admins are never restricted
-    if (!user || user.isAdmin) {
+    if (!user || user.isAdmin || !user.schoolId) {
       return { isRestricted: false, missingClasses: [], isLoading: false };
     }
 
     // Load school settings
-    const settings = await db.settings.toCollection().first();
+    const settings = await db.settings.where('schoolId').equals(user.schoolId).first();
     if (!settings || !settings.restrictTeacherActionsNoAttendance) {
       return { isRestricted: false, missingClasses: [], isLoading: false };
     }
 
     // Find classes assigned to this teacher
     const userId = Number(user.id);
-    const myClasses = await db.classes
+    const myClasses = await db.classes.where('schoolId').equals(user.schoolId)
       .filter(c => c.teacherId === userId || c.teacherName === user.fullName)
       .toArray();
 
@@ -35,7 +35,7 @@ export function useAttendanceRestriction(): AttendanceRestrictionResult {
     }
 
     const classIds = myClasses.map(c => c.id!).filter((id): id is number => id !== undefined);
-    const hasMissing = await hasMissingAttendance(userId, classIds);
+    const hasMissing = await hasMissingAttendance(userId, classIds, settings.holidayDates || []);
 
     if (hasMissing) {
       // Find exactly which dates/classes have missing attendance to list them

@@ -273,7 +273,7 @@ export const AttendancePage: React.FC = () => {
           const classIds = classes.map(c => c.id!).filter((id): id is number => id !== undefined);
           
           const { getMissingAttendanceList } = await import('../lib/attendance');
-          const missing = await getMissingAttendanceList(userId, classIds);
+          const missing = await getMissingAttendanceList(userId, classIds, settings?.holidayDates || []);
           
           if (missing.length > 0) {
             updateClassAndDate(missing[0].classId, missing[0].date);
@@ -284,7 +284,7 @@ export const AttendancePage: React.FC = () => {
       }
     };
     autoSelect();
-  }, [user, classes, selectedClassId]);
+  }, [user, classes, selectedClassId, settings?.holidayDates]);
 
   const studentsRaw = useLiveQuery(
     () => selectedClassId ? db.students.where('classId').equals(selectedClassId).toArray() : Promise.resolve([]),

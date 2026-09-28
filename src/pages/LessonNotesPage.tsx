@@ -403,8 +403,13 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'dirty' | 'saving' | 'synced' | 'error'>('idle');
   const [loadedKey, setLoadedKey] = useState<string>('');
   const editRevisionRef = useRef(0);
-  const selectedRecordKey = selectedSubjectId && selectedClassId && session
-    ? `${selectedSubjectId}-${selectedClassId}-${term}-${session}` : '';
+  const selectedRecordKey = user?.schoolId && selectedSubjectId && selectedClassId && session
+    ? `${user.schoolId}-${selectedSubjectId}-${selectedClassId}-${term}-${session}` : '';
+  const selectedRecordKeyRef = useRef(selectedRecordKey);
+  selectedRecordKeyRef.current = selectedRecordKey;
+  // Keep the existing on-device draft key until legacy drafts can be migrated with school attribution.
+  const draftKey = selectedSubjectId && selectedClassId && session
+    ? `draft_lesson_notes_${selectedSubjectId}_${selectedClassId}_${term}_${session}` : '';
   const [showRibbon, setShowRibbon] = useState<boolean>(true);
 
   // Active combined tab state (SOW or NOTES) defaulting to route Prop
@@ -448,8 +453,8 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
       .where('[subjectId+classId+term+session]')
       .equals([selectedSubjectId, selectedClassId, term, session])
       .first();
-    return res || { notFound: true };
-  }, [selectedSubjectId, selectedClassId, term, session]);
+    return { key: selectedRecordKey, value: res || { notFound: true } };
+  }, [selectedSubjectId, selectedClassId, term, session, selectedRecordKey]);
 
   const existingNotes = useLiveQuery(async () => {
     if (!selectedSubjectId || !selectedClassId || !session) return null;
@@ -457,8 +462,8 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
       .where('[subjectId+classId+term+session]')
       .equals([selectedSubjectId, selectedClassId, term, session])
       .first();
-    return res || { notFound: true };
-  }, [selectedSubjectId, selectedClassId, term, session]);
+    return { key: selectedRecordKey, value: res || { notFound: true } };
+  }, [selectedSubjectId, selectedClassId, term, session, selectedRecordKey]);
 
   // Base pool of subjects for teacher vs admin/student
   const teacherSubjects = useMemo(() => {
@@ -548,17 +553,19 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
   // Sync / Merge data when curriculum or existing notes load or change
   useEffect(() => {
     if (!selectedSubjectId || !selectedClassId || !session) return;
-    if (curriculum === undefined || existingNotes === undefined) return;
-    const currentKey = `${selectedSubjectId}-${selectedClassId}-${term}-${session}`;
+    const currentKey = selectedRecordKey;
+    if (!currentKey) return;
+    if (curriculum?.key !== currentKey || existingNotes?.key !== currentKey) return;
+    const curriculumRecord = curriculum.value;
+    const notesRecord = existingNotes.value;
     
     if (currentKey !== loadedKey) {
-      const draftKey = `draft_lesson_notes_${selectedSubjectId}_${selectedClassId}_${term}_${session}`;
       let draftWeeks = null;
       try { const draftData = localStorage.getItem(draftKey); if (draftData) draftWeeks = JSON.parse(draftData); } catch (e) {}
-      if (curriculum && !('notFound' in curriculum)) {
+      if (!('notFound' in curriculumRecord)) {
         // Sync topics and SOW video links into lesson notes
-        const matchedWeeks = existingNotes && !('notFound' in existingNotes) ? existingNotes.weeks : null;
-        const merged = curriculum.topics.map(t => {
+        const matchedWeeks = !('notFound' in notesRecord) ? notesRecord.weeks : null;
+        const merged = curriculumRecord.topics.map(t => {
           const matchedNote = matchedWeeks?.find(w => w.week === t.week);
           return {
             week: t.week,
@@ -573,9 +580,9 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
         setNoteWeeks(draftWeeks || merged);
         setLoadedKey(currentKey);
         setAutosaveStatus('idle');
-      } else if (curriculum && 'notFound' in curriculum) {
+      } else {
         // No scheme of work setup yet, initialize a skeleton of 12 weeks
-        const matchedWeeks = existingNotes && !('notFound' in existingNotes) ? existingNotes.weeks : null;
+        const matchedWeeks = !('notFound' in notesRecord) ? notesRecord.weeks : null;
         const skeleton = Array.from({ length: 12 }, (_, i) => {
           const matchedNote = matchedWeeks?.find(w => w.week === (i + 1));
           return {
@@ -593,17 +600,17 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
         setAutosaveStatus('idle');
       }
     }
-  }, [curriculum, existingNotes, selectedSubjectId, selectedClassId, term, session, loadedKey]);
+  }, [curriculum, existingNotes, selectedSubjectId, selectedClassId, term, session, loadedKey, selectedRecordKey, draftKey]);
 
   // Debounced Autosave effect for Lesson Notes and Scheme of Work concurrently!
   useEffect(() => {
-    if (selectedSubjectId && selectedClassId && session && noteWeeks.length > 0) {
-      const draftKey = `draft_lesson_notes_${selectedSubjectId}_${selectedClassId}_${term}_${session}`;
+    if (draftKey && loadedKey === selectedRecordKey && noteWeeks.length > 0) {
       if (autosaveStatus === 'dirty' || autosaveStatus === 'saving') {
         localStorage.setItem(draftKey, JSON.stringify(noteWeeks));
       }
     }
 
+    if (!selectedRecordKey || loadedKey !== selectedRecordKey) return;
     if (autosaveStatus !== 'dirty') return;
     if (isStudent || isAdmin || isAttendanceRestricted) return;
 
@@ -683,23 +690,26 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
           await db.curriculum.add(currData);
         }
 
-        if (savingRevision === editRevisionRef.current) {
-          setAutosaveStatus('synced');
-          localStorage.removeItem(`draft_lesson_notes_${selectedSubjectId}_${selectedClassId}_${term}_${session}`);
-        } else {
-          setAutosaveStatus('dirty');
+        if (selectedRecordKeyRef.current === selectedRecordKey) {
+          if (savingRevision === editRevisionRef.current) {
+            setAutosaveStatus('synced');
+            localStorage.removeItem(draftKey);
+          } else {
+            setAutosaveStatus('dirty');
+          }
         }
       } catch (error) {
         console.error('Autosave failed:', error);
-        setAutosaveStatus('error');
+        if (selectedRecordKeyRef.current === selectedRecordKey) setAutosaveStatus('error');
       }
     }, 1500); // 1.5s debounce
 
     return () => clearTimeout(timeoutId);
-  }, [noteWeeks, autosaveStatus, selectedSubjectId, selectedClassId, term, session, isStudent, isAdmin, isAttendanceRestricted]);
+  }, [noteWeeks, autosaveStatus, selectedSubjectId, selectedClassId, term, session, isStudent, isAdmin, isAttendanceRestricted, selectedRecordKey, loadedKey, draftKey]);
 
   // Handle manual saving
   const handleManualSave = async () => {
+    if (!selectedRecordKey || loadedKey !== selectedRecordKey) return;
     if (isAttendanceRestricted) {
       showToast('You must complete pending attendance checks first.', 'error');
       return;
@@ -792,15 +802,19 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
       });
 
       showToast('Scheme and Lesson notes saved successfully', 'success');
-      if (savingRevision === editRevisionRef.current) {
-        setAutosaveStatus('synced');
-        localStorage.removeItem(`draft_lesson_notes_${selectedSubjectId}_${selectedClassId}_${term}_${session}`);
-      } else {
-        setAutosaveStatus('dirty');
+      if (selectedRecordKeyRef.current === selectedRecordKey) {
+        if (savingRevision === editRevisionRef.current) {
+          setAutosaveStatus('synced');
+          localStorage.removeItem(draftKey);
+        } else {
+          setAutosaveStatus('dirty');
+        }
       }
     } catch (error) {
-      showToast('Failed to save data', 'error');
-      setAutosaveStatus('error');
+      if (selectedRecordKeyRef.current === selectedRecordKey) {
+        showToast('Failed to save data', 'error');
+        setAutosaveStatus('error');
+      }
     } finally {
       setIsSaving(false);
     }

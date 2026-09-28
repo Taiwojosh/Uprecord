@@ -82,7 +82,7 @@ export const UserManualPage: React.FC = () => {
           <BookOpen className="h-4 w-4" /><h2 className="text-sm font-semibold">Where your records are kept</h2>
         </div>
         <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-          School Registry and portal accounts use the school server. Some academic drafts are saved in this browser.
+          School Registry and portal accounts use the school server. Some academic records, including saved lesson plans, are stored in this browser.
           A local download covers only records on this device; it is not a full school backup.
         </p>
         {(user?.role === 'admin' || user?.isAdmin) && (

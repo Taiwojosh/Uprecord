@@ -4,36 +4,55 @@ import { db } from '../db/db';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getMissingAttendanceList, type IMissingAttendanceItem } from '../lib/attendance';
 import { AlertCircle, CalendarDays, ArrowRight } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export const AttendanceGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [missingItems, setMissingItems] = useState<IMissingAttendanceItem[]>([]);
-  const [isChecking, setIsChecking] = useState(true);
+  const [checkResult, setCheckResult] = useState<{ key: string; items: IMissingAttendanceItem[]; failed: boolean }>({ key: '', items: [], failed: false });
+  const restrictTeacherActions = useLiveQuery(async () => {
+    if (!user?.schoolId) return false;
+    const settings = await db.settings.where('schoolId').equals(user.schoolId).first();
+    return !!settings?.restrictTeacherActionsNoAttendance;
+  }, [user?.schoolId]);
+  const checkKey = `${user?.id || ''}:${user?.schoolId || ''}:${location.pathname}:${String(restrictTeacherActions)}`;
 
   useEffect(() => {
+    let cancelled = false;
     const check = async () => {
-      if (user?.role !== 'teacher') {
-        setIsChecking(false);
+      if (user?.role !== 'teacher' || !user.schoolId) {
+        if (!cancelled) setCheckResult({ key: checkKey, items: [], failed: false });
         return;
       }
 
-      const userId = user?.id && !isNaN(Number(user.id)) ? Number(user.id) : -1;
-      const classes = await db.classes.filter(c => c.teacherId === userId || c.teacherName === user?.fullName).toArray();
-      const classIds = classes.map(c => c.id!);
+      if (restrictTeacherActions === undefined) return;
+      if (restrictTeacherActions === false) {
+        if (!cancelled) setCheckResult({ key: checkKey, items: [], failed: false });
+        return;
+      }
 
-      const missingList = await getMissingAttendanceList(userId, classIds);
-      setMissingItems(missingList);
-      setIsChecking(false);
+      try {
+        const userId = user.id && !isNaN(Number(user.id)) ? Number(user.id) : -1;
+        const classes = await db.classes.where('schoolId').equals(user.schoolId)
+          .filter(c => c.teacherId === userId || c.teacherName === user.fullName).toArray();
+        const classIds = classes.map(c => c.id!).filter((id): id is number => id !== undefined);
+        const settings = await db.settings.where('schoolId').equals(user.schoolId).first();
+        const missingList = await getMissingAttendanceList(userId, classIds, settings?.holidayDates || []);
+        if (!cancelled) setCheckResult({ key: checkKey, items: missingList, failed: false });
+      } catch {
+        if (!cancelled) setCheckResult({ key: checkKey, items: [], failed: true });
+      }
     };
-    check();
-  }, [user, location.pathname]);
+    void check();
+    return () => { cancelled = true; };
+  }, [user, location.pathname, restrictTeacherActions, checkKey]);
 
-  if (isChecking) return null; // Or a loading spinner
+  if (user?.role === 'teacher' && (restrictTeacherActions === undefined || checkResult.key !== checkKey)) return null;
+  if (checkResult.failed) return <p role="alert" className="p-6">Unable to check attendance. Reload this page to try again.</p>;
 
-  if (missingItems.length > 0 && location.pathname !== '/attendance') {
-    const firstItem = missingItems[0];
+  if (checkResult.items.length > 0 && location.pathname !== '/attendance') {
+    const firstItem = checkResult.items[0];
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6 font-sans">
         <div className="w-full max-w-lg bg-white p-10 rounded-[2.5rem] shadow-2xl text-center space-y-6">
@@ -44,7 +63,7 @@ export const AttendanceGuard: React.FC<{ children: React.ReactNode }> = ({ child
           <div className="space-y-2">
             <h1 className="text-xl font-black text-slate-900 uppercase italic">Attendance Pending</h1>
             <p className="text-slate-500 text-xs font-semibold leading-relaxed max-w-sm mx-auto">
-              You have {missingItems.length} missing daily attendance record{missingItems.length > 1 ? 's' : ''} for your managed classes. Please complete pending records to continue.
+              You have {checkResult.items.length} missing daily attendance record{checkResult.items.length > 1 ? 's' : ''} for your managed classes. Please complete pending records to continue.
             </p>
           </div>
 
@@ -52,7 +71,7 @@ export const AttendanceGuard: React.FC<{ children: React.ReactNode }> = ({ child
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block px-1">
               Select a date registry to mark:
             </span>
-            {missingItems.map((item, idx) => (
+              {checkResult.items.map((item, idx) => (
               <button
                 key={idx}
                 onClick={() => navigate(`/attendance?classId=${item.classId}&date=${item.date}`)}

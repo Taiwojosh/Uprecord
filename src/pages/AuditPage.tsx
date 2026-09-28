@@ -9,13 +9,14 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useAuth } from '../context/AuthContext';
+import { Navigate } from 'react-router-dom';
 
 export const AuditPage: React.FC = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
 
   const logs = useLiveQuery(async () => {
-    if (!user?.schoolId) return [];
+    if (!user?.schoolId || (user.role !== 'admin' && !user.isAdmin)) return [];
     const allLogs = await db.auditLogs.where('schoolId').equals(user.schoolId).toArray();
     allLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     
@@ -28,7 +29,9 @@ export const AuditPage: React.FC = () => {
       );
     }
     return allLogs;
-  }, [searchTerm, user?.schoolId]) ?? [];
+  }, [searchTerm, user?.schoolId, user?.role, user?.isAdmin]) ?? [];
+
+  if (user?.role !== 'admin' && !user?.isAdmin) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="w-full min-w-0 max-w-7xl mx-auto space-y-6 px-1 sm:px-4 lg:px-8 py-4 font-sans">

@@ -7,20 +7,18 @@ export interface IMissingAttendanceItem {
   formattedDate: string;
 }
 
-export async function hasMissingAttendance(teacherId: number, classIds: number[]) {
-  const list = await getMissingAttendanceList(teacherId, classIds);
+export async function hasMissingAttendance(teacherId: number, classIds: number[], holidayDates: string[]) {
+  const list = await getMissingAttendanceList(teacherId, classIds, holidayDates);
   return list.length > 0;
 }
 
-export async function getMissingAttendanceList(teacherId: number, classIds: number[]): Promise<IMissingAttendanceItem[]> {
+export async function getMissingAttendanceList(teacherId: number, classIds: number[], holidayDates: string[]): Promise<IMissingAttendanceItem[]> {
   const last30Days = Array.from({ length: 30 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - i - 1);
     return d;
   });
 
-  const settings = await db.settings.toCollection().first();
-  const holidayDates = settings?.holidayDates || [];
   const results: IMissingAttendanceItem[] = [];
 
   for (const dateObj of last30Days) {
