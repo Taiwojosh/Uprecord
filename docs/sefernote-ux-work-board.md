@@ -15,7 +15,7 @@ Use this board with `AGENTS.md`. Work on an isolated branch and worktree for eac
 | ID | Owner | Status | Scope and acceptance | Primary file boundary |
 | --- | --- | --- | --- | --- |
 | SAFE-1 | Codex | Review | Label browser-only export accurately; prevent unscoped export and unsafe local restore/reset; require explicit confirmation before detaching a school domain. | `BackupPage.tsx`, `DomainBrandingManager.tsx`, `server/src/routes/schools.ts`, matching tests. |
-| REG-1 | Cline | Available | One School Registry nav entry with Students/Teachers sections; keep old direct routes; term roster rollover preview for students and teachers; next-session promotion preview with exceptions; grouped history; classes/subjects flow into academic lists; derive school abbreviation only for new student numbers and preserve existing IDs. | `Sidebar.tsx`, registry/history/roster pages and their server routes/tests. Avoid `AppLayout.tsx`, `ImmersiveContext.tsx`, `LessonNotesPage.tsx`, `UserManualPage.tsx`, `BackupPage.tsx`, domain files. |
+| REG-1 | Cline | Review | One School Registry nav entry with Students/Teachers sections; keep old direct routes; term roster rollover preview for students and teachers; next-session promotion preview with exceptions; grouped history; classes/subjects flow into academic lists; derive school abbreviation only for new student numbers and preserve existing IDs. | `Sidebar.tsx`, registry/history/roster pages and their server routes/tests. Avoid `AppLayout.tsx`, `ImmersiveContext.tsx`, `LessonNotesPage.tsx`, `UserManualPage.tsx`, `BackupPage.tsx`, domain files. |
 | UI-1 | Antigravity | Available | Offline-only local-record notice; diagnose autosave flicker and use quiet saved feedback; consistent typography/spacing; mobile immersive default with proper header padding and Results-only control; smaller powered-by text; friction-free lesson planner; clear Help & Guide; define and simplify audit-log presentation. Verify desktop/mobile, light/dark, and school branding. | `AppLayout.tsx`, `ImmersiveContext.tsx`, `LessonNotesPage.tsx`, `UserManualPage.tsx`, `AuditPage.tsx`, shared CSS/components. Avoid `Sidebar.tsx`, registry/history pages, backup/domain files. |
 | AUTH-1 | Unclaimed | Needs product decision | Existing school usernames/admission or staff IDs as login identifiers, one-time account setup, admin-assisted resets, no shared default passwords. Inspect imported identity mapping and tenant uniqueness before coding. | Auth, account creation, server schema/tests. |
 | CBT-1 | Unclaimed | Needs product decision | Paste/import question text with detected options and required teacher confirmation; topic-based AI prompt template; evaluate teacher BYOK as a later secure feature. No key entry or billing UI yet. | CBT page/routes/tests. |
@@ -36,9 +36,13 @@ Use this board with `AGENTS.md`. Work on an isolated branch and worktree for eac
 
 ### REG-1
 
-- Branch: unclaimed
-- Implemented by: pending
-- Reviewed by: pending
+- Branch: `hermes/reg1-registry-rollover`
+- Commit: `a38c788` (code and tests)
+- Implemented by: Cline
+- Reviewed by: pending independent review
+- VERIFIED: 118 tests passed (`npm test`, 9 files, up from 111 — adds `server/tests/registry-rollover.test.ts` with 7 tests), `npm run lint` (`tsc --noEmit`) exited 0 with no diagnostics, `npm run build` exited 0 (3186 modules transformed). Run in the isolated worktree using only disposable test data.
+- NOT TESTED: authenticated desktop (1280/1440) and mobile (375/390) browser flows on this branch, because no browser tooling is available in this environment; also no production deployment (out of scope by board rule).
+- Notes: Sidebar now has one School Registry entry; `/students` and `/teachers` direct routes still work. Rollover and promotion previews are non-mutating and the applies are guarded (already-current period, duplicate/cross-school class targets); a null promotion target graduates the student. Registered classes and subjects are mirrored into the local Dexie academic lists that score sheets read from. The hash-only setup-token auth hardening is a separate deliverable already pushed on `cline/tenant-backfill-foundation` (`c8eca7f`) and was deliberately not duplicated here, because REG-1's board scope and file boundary cover only the registry/roster surface.
 - Handoff: none
 
 ### UI-1
