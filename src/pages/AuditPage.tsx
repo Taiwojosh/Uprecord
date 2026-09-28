@@ -49,7 +49,7 @@ export const AuditPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 font-sans">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <PageHeader 
           title="System Audit Trail" 
@@ -57,15 +57,15 @@ export const AuditPage: React.FC = () => {
         />
         <button 
           onClick={() => setIsClearConfirmOpen(true)}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-rose-50 text-rose-600 text-[0.625rem] font-black uppercase tracking-widest rounded-2xl hover:bg-rose-100 transition-all border border-rose-100"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-semibold rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all border border-rose-200/60 dark:border-rose-900/60 shadow-sm"
         >
-          <Trash2 size={16} />
-          Wipe Log Master
+          <Trash2 size={14} />
+          Clear Audit Trail
         </button>
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
          <AuditStatsCard 
            icon={Activity} 
            label="Total Events" 
@@ -101,58 +101,58 @@ export const AuditPage: React.FC = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input 
             type="text" 
-            placeholder="Search by professional, action or specific details..."
+            placeholder="Search by actor, action, or specific details..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-sm text-gray-900 shadow-sm"
+            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 shadow-sm"
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm">
          <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
                <thead>
                   <tr className="bg-gray-50/50">
-                     <th className="px-8 py-5 text-[0.625rem] font-black text-gray-400 uppercase tracking-widest">Timestamp</th>
-                     <th className="px-8 py-5 text-[0.625rem] font-black text-gray-400 uppercase tracking-widest">Actor</th>
-                     <th className="px-8 py-5 text-[0.625rem] font-black text-gray-400 uppercase tracking-widest">Action Command</th>
-                     <th className="px-8 py-5 text-[0.625rem] font-black text-gray-400 uppercase tracking-widest">Registry Details</th>
-                     <th className="px-8 py-5 text-[0.625rem] font-black text-gray-400 uppercase tracking-widest text-right">Channel</th>
+                     <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Timestamp</th>
+                     <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actor</th>
+                     <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action Command</th>
+                     <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Registry Details</th>
+                     <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Channel</th>
                   </tr>
                </thead>
                <tbody className="divide-y divide-gray-50">
                   {logs.map(log => (
                     <tr key={log.id} className="group hover:bg-gray-50/50 transition-colors">
-                       <td className="px-8 py-6">
-                          <div className="flex items-center gap-2 text-gray-400 font-mono text-[0.625rem]">
+                       <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-mono text-xs">
                              <Clock size={12} />
                              {new Date(log.timestamp).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                           </div>
                        </td>
-                       <td className="px-8 py-6">
+                       <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
                              <div className="w-8 h-8 bg-slate-900 text-white rounded-xl flex items-center justify-center text-[0.625rem] font-black italic">
                                 {log.userName[0]}
                              </div>
-                             <p className="text-xs font-black text-gray-900">{log.userName}</p>
+                             <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100">{log.userName}</p>
                           </div>
                        </td>
-                       <td className="px-8 py-6">
-                          <span className={`px-3 py-1 rounded-full text-[0.625rem] font-black uppercase tracking-widest border ${
-                            log.action.toLowerCase().includes('delete') ? 'bg-rose-50 text-rose-600 border-rose-100' : 
-                            log.action.toLowerCase().includes('add') || log.action.toLowerCase().includes('create') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                            'bg-blue-50 text-blue-600 border-blue-100'
+                       <td className="px-5 py-3.5">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                            log.action.toLowerCase().includes('delete') ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' : 
+                            log.action.toLowerCase().includes('add') || log.action.toLowerCase().includes('create') ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
+                            'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
                           }`}>
                              {log.action}
                           </span>
                        </td>
-                       <td className="px-8 py-6">
-                          <p className="text-[0.6875rem] font-medium text-gray-500 leading-relaxed max-w-xs truncate group-hover:whitespace-normal group-hover:overflow-visible group-hover:max-w-none transition-all">
+                       <td className="px-5 py-3.5">
+                          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm truncate group-hover:whitespace-normal group-hover:max-w-none transition-all">
                              {log.details}
                           </p>
                        </td>
-                       <td className="px-8 py-6 text-right">
+                       <td className="px-5 py-3.5 text-right">
                           <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-lg text-[0.5625rem] font-black text-gray-400 uppercase tracking-widest border border-gray-100">
                              Local Master
                           </div>
@@ -188,25 +188,25 @@ export const AuditPage: React.FC = () => {
 
 const AuditStatsCard: React.FC<{ icon: any, label: string, value: string | number, detail: string, color: string }> = ({ icon: Icon, label, value, detail, color }) => {
   const colors: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600',
-    amber: 'bg-amber-50 text-amber-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    slate: 'bg-slate-50 text-slate-600'
+    blue: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    slate: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20'
   };
 
   return (
-    <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-4 group hover:border-blue-100 transition-all">
+    <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 transition-all">
        <div className="flex items-center justify-between">
-          <div className={`w-10 h-10 ${colors[color]} rounded-xl flex items-center justify-center`}>
-             <Icon size={20} />
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${colors[color]}`}>
+             <Icon size={16} />
           </div>
-          <p className="text-[0.625rem] font-black text-gray-400 uppercase tracking-widest">{label}</p>
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{label}</span>
        </div>
        <div>
-          <p className="text-2xl font-black text-gray-900 tracking-tight italic">{value}</p>
-          <p className="text-[0.5625rem] font-bold text-gray-400 uppercase tracking-widest mt-1">{detail}</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">{value}</p>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 font-normal mt-0.5">{detail}</p>
        </div>
     </div>
   );
-}
+};
 

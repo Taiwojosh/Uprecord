@@ -28,7 +28,8 @@ import {
   Youtube,
   AlertTriangle,
   X,
-  ImageIcon
+  ImageIcon,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrentSession } from '../hooks/useCurrentSession';
@@ -895,7 +896,7 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* Left Navigator Panel Panel */}
-        <div className="lg:col-span-4 bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-6">
+        <div className="lg:col-span-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
           <div>
             <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest pl-1 mb-3">Academic Scope</h3>
             <div className="space-y-4">
@@ -994,7 +995,7 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
             <>
               {/* Tab 1: Scheme of Work Card */}
               {activeTab === 'sow' && (
-                <div className="bg-white p-8 lg:p-12 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-8 animate-fade-in">
+                <div className="bg-white p-8 lg:p-12 rounded-2xl border border-slate-100 shadow-sm space-y-8 animate-fade-in">
                   
                   {/* Header details */}
                   <div className="border-b border-slate-100 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1088,7 +1089,7 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
 
               {/* Tab 2: Detailed Lesson Notes Card */}
               {activeTab === 'note' && (
-                <div className="bg-white p-8 lg:p-12 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-8 animate-fade-in">
+                <div className="bg-white p-8 lg:p-12 rounded-2xl border border-slate-100 shadow-sm space-y-8 animate-fade-in">
                   
                   {/* Notes Header Details */}
                   <div className="border-b border-slate-100 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1164,25 +1165,31 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
                     Week {activeWeek}
                   </span>
 
-                  {/* Autosaving metadata tag status updates */}
+                  {/* Autosaving metadata tag status updates - quiet green saved feedback */}
                   {overlayMode === 'edit' && (
-                    <div className="shrink-0 text-[9px] font-bold select-none">
+                    <div className="shrink-0 min-w-[85px] flex items-center justify-end text-xs select-none">
                       {autosaveStatus === 'saving' && (
-                        <span className="flex items-center gap-1 text-blue-500 bg-blue-50/75 px-1.5 py-0.5 rounded-md border border-blue-105/10">
-                          <span className="w-1 h-1 bg-blue-500 rounded-full animate-ping" />
-                          Autosaving
+                        <span className="inline-flex items-center gap-1.5 text-slate-400 dark:text-slate-500 font-medium">
+                          <Loader2 size={12} className="animate-spin text-slate-400" />
+                          <span>Saving...</span>
                         </span>
                       )}
                       {autosaveStatus === 'synced' && (
-                        <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50/75 px-1.5 py-0.5 rounded-md border border-emerald-105/10">
-                          <span className="w-1 h-1 bg-emerald-500 rounded-full" />
-                          Synced
+                        <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium animate-in fade-in duration-300">
+                          <CheckCircle2 size={13} className="text-emerald-500 dark:text-emerald-400" />
+                          <span>Saved</span>
                         </span>
                       )}
                       {autosaveStatus === 'dirty' && (
-                        <span className="flex items-center gap-1 text-amber-500 bg-amber-50/75 px-1.5 py-0.5 rounded-md border border-amber-105/10">
-                          <span className="w-1 h-1 bg-amber-400 rounded-full animate-pulse" />
-                          Pending
+                        <span className="inline-flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[11px] font-normal">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
+                          <span>Editing</span>
+                        </span>
+                      )}
+                      {autosaveStatus === 'error' && (
+                        <span className="inline-flex items-center gap-1 text-rose-500 font-medium text-[11px]">
+                          <AlertTriangle size={12} />
+                          <span>Save failed</span>
                         </span>
                       )}
                     </div>
@@ -1492,19 +1499,19 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
                   )}
 
                   {/* Footer Save Button controls */}
-                  <div className="bg-slate-50 border-t border-slate-100/50 p-3 flex items-center justify-between gap-4 shrink-0">
-                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">
-                      Content saves automatically on keystroke
+                  <div className="bg-slate-50 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800 p-3.5 px-4 flex items-center justify-between gap-4 shrink-0">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      All changes save automatically as you type
                     </span>
                     
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         disabled={isSaving}
                         onClick={handleManualSave}
-                        className="px-3.5 py-1.5 bg-slate-900 border border-slate-900/40 text-white rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-black transition-all flex items-center gap-1.5 disabled:opacity-40"
+                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-40"
                       >
-                        <Save size={10} />
+                        <Save size={13} />
                         {isSaving ? "Saving..." : "Save"}
                       </button>
                     </div>
@@ -1519,7 +1526,7 @@ export const LessonNotesPage: React.FC<LessonNotesPageProps> = ({ defaultTab = '
                     Live Student Preview Frame
                   </div>
                   
-                  <div className="bg-white p-8 lg:p-12 rounded-[2.5rem] border border-slate-100 shadow-sm grow overflow-y-auto max-w-4xl mx-auto w-full">
+                  <div className="bg-white p-8 lg:p-12 rounded-2xl border border-slate-100 shadow-sm grow overflow-y-auto max-w-4xl mx-auto w-full">
                     {activeTab === 'sow' ? (
                       <div className="space-y-6">
                         <div>

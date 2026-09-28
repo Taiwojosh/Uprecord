@@ -21,7 +21,8 @@ import {
   Sun,
   Moon,
   Maximize2,
-  Minimize2
+  Minimize2,
+  WifiOff,
 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
@@ -266,6 +267,26 @@ export const AppLayout: React.FC = () => {
     }
   };
 
+    const [isOnline, setIsOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
+  const [isDesktop, setIsDesktop] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 1024 : true));
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -309,12 +330,12 @@ export const AppLayout: React.FC = () => {
         {/* Header with toggle-active slide-collapse animation */}
         <motion.header 
           animate={{ 
-            height: isImmersive ? 0 : '5rem',
-            y: isImmersive ? -80 : 0,
-            opacity: isImmersive ? 0 : 1
+            height: isImmersive && (isDesktop || location.pathname.startsWith('/results')) ? 0 : 'auto',
+            y: isImmersive && (isDesktop || location.pathname.startsWith('/results')) ? -80 : 0,
+            opacity: isImmersive && (isDesktop || location.pathname.startsWith('/results')) ? 0 : 1
           }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="h-20 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between gap-2 px-3 sm:px-6 lg:px-10 shrink-0 z-30 shadow-sm shadow-gray-50/50 dark:shadow-slate-950/20 transition-colors duration-200"
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="h-16 lg:h-20 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between gap-2 px-4 sm:px-6 lg:px-8 shrink-0 z-30 shadow-sm shadow-gray-50/50 dark:shadow-slate-950/20 transition-colors duration-200"
         >
           <div className="flex items-center gap-3 sm:gap-6 flex-1 min-w-0">
             <button 
@@ -498,15 +519,15 @@ export const AppLayout: React.FC = () => {
               )}
             </button>
 
-            {/* Immersive Mode Toggle Button */}
+            {/* Immersive Mode Toggle Button - on mobile, only show when on Results page where extra room is needed */}
             <button
               type="button"
               onClick={toggleImmersive}
-              className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 rounded-2xl transition-all border border-transparent hover:border-blue-50 dark:hover:border-slate-700 relative group"
+              className={`p-2.5 sm:p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 rounded-2xl transition-all border border-transparent hover:border-blue-50 dark:hover:border-slate-700 relative group ${location.pathname.startsWith('/results') ? 'flex' : 'hidden lg:flex'}`}
               title="Toggle Immersive Mode"
               aria-label="Toggle focus mode"
             >
-              <Maximize2 className="w-5 h-5 group-hover:scale-110 transition-transform duration-300 text-slate-400 dark:text-slate-300 text-gray-500 dark:text-slate-300" />
+              <Maximize2 className="w-5 h-5 group-hover:scale-110 transition-transform duration-300 text-slate-400 dark:text-slate-300" />
             </button>
           </div>
         </motion.header>
@@ -515,19 +536,32 @@ export const AppLayout: React.FC = () => {
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-[#F8F9FA] dark:bg-slate-950 min-h-0 h-full">
           <motion.div 
             animate={{
-              padding: isImmersive ? '0px' : undefined,
-              maxWidth: isImmersive ? '100%' : '1600px'
+              padding: isImmersive && (isDesktop || location.pathname.startsWith('/results')) ? '0px' : undefined,
+              maxWidth: isImmersive && (isDesktop || location.pathname.startsWith('/results')) ? '100%' : '1600px'
             }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className={`mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500 w-full min-h-full flex flex-col ${isImmersive ? 'p-0' : 'p-6 lg:p-10'}`}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className={`mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300 w-full min-h-full flex flex-col ${
+              isImmersive && (isDesktop || location.pathname.startsWith('/results'))
+                ? 'p-0'
+                : 'p-3 sm:p-5 lg:p-8'
+            }`}
           >
-            {!location.pathname.startsWith('/communication') && !["/registry", "/registry/history", "/dashboard", "/settings"].includes(location.pathname) && <div role="note" className="m-4 p-4 rounded-lg bg-amber-50 text-amber-950 text-sm">Pilot: this academic screen uses browser-local records. For records shared across devices, open <a href="/registry" className="font-bold underline">School Registry</a>.</div>}<Outlet />
+            {!isOnline && (
+              <div role="status" className="mb-4 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs font-medium flex items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <WifiOff size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>Working offline. Changes are saved locally on this device and will sync when your connection is restored.</span>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 px-2 py-0.5 rounded-md text-amber-800 dark:text-amber-300 shrink-0">Offline</span>
+              </div>
+            )}
+            <Outlet />
           </motion.div>
         </main>
 
         {/* Elegant Floating Escape Button for Immersive Mode */}
         <AnimatePresence>
-          {isImmersive && (
+          {isImmersive && (isDesktop || location.pathname.startsWith('/results')) && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8, y: -20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

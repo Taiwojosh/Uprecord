@@ -215,7 +215,7 @@ export const UserManualPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-10 pb-20">
+    <div className="space-y-8 pb-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <PageHeader 
         title="Institutional Manual" 
         subtitle="Explore specialized usage guides, custom configurations, and feature roadmaps" 
@@ -223,7 +223,7 @@ export const UserManualPage: React.FC = () => {
 
       {/* Role Selection Tabs */}
       {visibleTabs.length > 1 && (
-        <div className="bg-slate-100 p-2 rounded-[2rem] inline-flex flex-wrap md:flex-nowrap gap-2 w-full max-w-4xl shadow-inner border border-gray-200/50">
+        <div className="bg-slate-100/80 dark:bg-slate-900/80 p-1.5 rounded-2xl inline-flex flex-wrap sm:flex-nowrap gap-1.5 w-full max-w-2xl border border-slate-200/60 dark:border-slate-800">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isSelected = activeTab === tab.id;
@@ -268,7 +268,7 @@ export const UserManualPage: React.FC = () => {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
-                className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
+                className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
               >
                 <div className="space-y-4">
                   <div className="flex gap-4 items-center">
@@ -276,10 +276,10 @@ export const UserManualPage: React.FC = () => {
                       <section.icon className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-gray-900 tracking-tight uppercase italic">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                         {section.title}
                       </h3>
-                      <p className="text-[0.625rem] text-gray-400 font-bold uppercase tracking-wider mt-0.5 leading-none">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">
                         {section.desc}
                       </p>
                     </div>
@@ -287,7 +287,7 @@ export const UserManualPage: React.FC = () => {
                   <div className="h-px bg-gray-50" />
                   <ul className="space-y-3 pt-2">
                     {section.content.map((item, i) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-gray-500 leading-relaxed font-semibold">
+                      <li key={i} className="flex items-start gap-2.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
                         <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
                         <span>{item}</span>
                       </li>
@@ -299,7 +299,7 @@ export const UserManualPage: React.FC = () => {
           </div>
 
           {/* ROADMAP SECTION - COMING SOON */}
-          <div className="bg-slate-900 rounded-[3rem] p-8 md:p-10 border border-slate-800 text-white relative overflow-hidden shadow-xl">
+          <div className="bg-slate-900 rounded-2xl p-8 md:p-10 border border-slate-800 text-white relative overflow-hidden shadow-xl">
             <div className="absolute right-0 top-0 w-32 h-32 bg-blue-500/10 rounded-full blur-[100px]" />
             <div className="absolute left-1/3 bottom-0 w-48 h-48 bg-violet-500/10 rounded-full blur-[120px]" />
 
@@ -409,7 +409,7 @@ export const UserManualPage: React.FC = () => {
 
         {/* Support & Quick Info (4 cols on desktop) */}
         <div className="lg:col-span-4 space-y-8">
-          <div className="bg-blue-600 p-8 rounded-[2.5rem] text-white shadow-xl shadow-blue-200 relative overflow-hidden">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 sm:p-8 rounded-2xl text-white shadow-lg relative overflow-hidden">
             <div className="absolute -right-10 -bottom-10 opacity-10">
               <HelpCircle size={200} />
             </div>
@@ -432,7 +432,7 @@ export const UserManualPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
             <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Quick Tips</h3>
             <div className="space-y-4">
               <Tip 
@@ -459,8 +459,8 @@ const Tip: React.FC<{ title: string, desc: string }> = ({ title, desc }) => (
   <div className="flex gap-4">
     <div className="w-1 h-auto bg-blue-100 rounded-full" />
     <div className="space-y-1">
-      <h4 className="text-sm font-black text-gray-900 tracking-tight uppercase italic">{title}</h4>
-      <p className="text-xs text-gray-500 leading-relaxed font-bold uppercase tracking-wide">{desc}</p>
+      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">{title}</h4>
+      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-normal">{desc}</p>
     </div>
   </div>
 );

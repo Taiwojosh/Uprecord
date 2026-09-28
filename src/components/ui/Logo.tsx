@@ -73,8 +73,8 @@ export const Logo: React.FC<LogoProps> = ({
               }`}>
                 {activePortalTitle || activeSchoolName}
               </span>
-              <span className="text-[0.625rem] font-medium tracking-wider text-slate-400 dark:text-slate-400 mt-1 uppercase flex items-center gap-1">
-                Powered by <strong className="text-indigo-400 dark:text-indigo-400 font-bold">SeferNote</strong>
+              <span className="text-[9px] font-normal tracking-wide text-slate-400 dark:text-slate-500 mt-0.5 flex items-center gap-1">
+                Powered by <span className="text-indigo-400 dark:text-indigo-400 font-medium">SeferNote</span>
               </span>
             </>
           ) : (
