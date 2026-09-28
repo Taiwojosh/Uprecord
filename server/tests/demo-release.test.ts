@@ -14,10 +14,10 @@ describe('Demo release safeguards', () => {
     try {
       const capabilities = await request(app).get('/api/auth/capabilities').set('Host', 'localhost');
       expect(capabilities.body.emailEnabled).toBe(false);
-      for (const path of ['forgot-password', 'invite']) {
-        const response = await request(app).post(`/api/auth/${path}`).set('Host', 'localhost').send({ email: 'nobody@example.test' });
-        expect(response.status).toBe(503);
-      }
+      const recovery = await request(app).post('/api/auth/forgot-password').set('Host', 'localhost').send({ email: 'nobody@example.test' });
+      expect(recovery.status).toBe(503);
+      const anonymousInvite = await request(app).post('/api/auth/invite').set('Host', 'localhost').send({ email: 'nobody@example.test' });
+      expect(anonymousInvite.status).toBe(401);
       await expect(sendSystemEmail({ to: 'nobody@example.test', subject: 'Disabled', template: 'password-reset', link: 'https://example.test/reset' })).rejects.toThrow('disabled');
     } finally {
       if (previous === undefined) delete process.env.EMAIL_DELIVERY_MODE;

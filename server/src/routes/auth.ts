@@ -19,8 +19,8 @@ router.get('/capabilities', (_req, res) => {
 });
 
 router.use((req, res, next) => {
-  if (process.env.EMAIL_DELIVERY_MODE === 'disabled' && req.method === 'POST' && ['/forgot-password', '/invite'].includes(req.path)) {
-    res.status(503).json({ error: 'Email invitations and password recovery are not enabled for this demo. Please contact the administrator.' });
+  if (process.env.EMAIL_DELIVERY_MODE === 'disabled' && req.method === 'POST' && req.path === '/forgot-password') {
+    res.status(503).json({ error: 'Email password recovery is not enabled for this demo. Please contact the administrator.' });
     return;
   }
   next();
