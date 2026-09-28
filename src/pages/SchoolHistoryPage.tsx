@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { FileText, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Search } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -9,7 +9,6 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { Field, Input } from '../components/ui/Field';
 
 const labels = { grades: 'Academic results', traitGrades: 'Trait scores', attendance: 'Term attendance', dailyAttendance: 'Daily attendance' };
-const COLUMNS = ['Student', 'Period', 'Subject / Trait / Date', 'Score / Attendance', 'Remark'];
 
 export function SchoolHistoryPage() {
   const { user } = useAuth();
@@ -23,7 +22,7 @@ export function SchoolHistoryPage() {
     const controller = new AbortController();
     setData(null);
     setError('');
-    api.get('/registry/history', { params: { kind, page, search: query }, signal: controller.signal })
+    api.get('/registry/history', { params: { kind, page, search: query, grouped: 1 }, signal: controller.signal })
       .then(({ data }) => {
         if (data.schoolId !== user?.schoolId) throw new Error('School mismatch');
         setData(data);
@@ -36,7 +35,7 @@ export function SchoolHistoryPage() {
       <header>
         <h1 className="text-3xl font-bold text-[var(--app-text)]">School Historical Records</h1>
         <p className="text-[var(--app-text-muted)] mt-3">
-          Saved academic records from your school's backups. Read-only history is kept separately from new report editing.
+          Saved academic records from your school's backups, grouped by session and term. Read-only history is kept separately from new report editing.
         </p>
       </header>
 
@@ -70,43 +69,48 @@ export function SchoolHistoryPage() {
       )}
 
       {data && (
-        <section aria-label="Historical records table">
-          <p className="text-sm text-[var(--app-text-muted)]">
-            {data.total} matching records · Page {page} of {Math.max(1, Math.ceil(data.total / 50))}
-          </p>
-          <div className="overflow-x-auto rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)]">
-            <table className="w-full text-sm text-left border-collapse">
-              <caption className="sr-only">{labels[kind as keyof typeof labels]}</caption>
-              <thead>
-                <tr className="border-b border-[var(--app-border-strong)] bg-[var(--app-surface-2)]">
-                  {COLUMNS.map(h => <th key={h} scope="col" className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-[var(--app-text-muted)]">{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {data.records.map((r: any) => (
-                  <tr key={r.id} className="border-b border-[var(--app-border)] hover:bg-[var(--app-surface-2)]">
-                    <td className="px-4 py-3"><strong className="text-[var(--app-text)]">{r.student.fullName}</strong><div className="text-xs text-[var(--app-text-subtle)]">{r.student.admissionNumber}</div></td>
-                    <td className="px-4 py-3 text-[var(--app-text-muted)]">{r.session} · Term {r.term}</td>
-                    <td className="px-4 py-3 text-[var(--app-text-muted)]">{r.subject?.subjectName || r.trait?.traitName || r.date || 'Term total'}</td>
-                    <td className="px-4 py-3 tabular-nums">{kind === 'grades' ? `${r.total ?? '—'} · ${r.grade || ''}` : kind === 'traitGrades' ? r.score : kind === 'attendance' ? `${r.daysPresent} / ${r.totalDays} days` : r.status}</td>
-                    <td className="px-4 py-3 text-[var(--app-text-muted)]">{r.remark || r.teacherRemark || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {data.total === 0 && (
-              <EmptyState icon="FileText" title="No records found" message="Try a different search or record collection." />
-            )}
-          </div>
-
-          <div className="flex gap-3">
-            <Button type="button" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-              <ChevronLeft className="w-4 h-4" aria-hidden="true" /> Previous
-            </Button>
-            <Button type="button" variant="outline" disabled={page * 50 >= data.total} onClick={() => setPage(page + 1)}>
-              Next <ChevronRight className="w-4 h-4" aria-hidden="true" />
-            </Button>
-          </div>
+        <section aria-label="Historical records" className="space-y-6">
+          <p className="text-sm text-[var(--app-text-muted)]">{data.total} matching records across {data.groups?.length || 0} session(s)</p>
+          {data.total === 0 && (
+            <EmptyState icon="FileText" title="No records found" message="Try a different search or record collection." />
+          )}
+          {data.total > 0 && Array.isArray(data.groups) && data.groups.map(group => (
+            <div key={group.session} className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] overflow-hidden">
+              <div className="px-4 py-3 bg-[var(--app-surface-2)] border-b border-[var(--app-border-strong)] flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-bold text-[var(--app-text)]">Session {group.session || 'Unspecified'}</h2>
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--app-text-muted)]">
+                  {group.terms.reduce((sum, t) => sum + t.count, 0)} records
+                </span>
+              </div>
+              {group.terms.map(term => (
+                <div key={`${group.session}-${term.term}`} className="border-b border-[var(--app-border)] last:border-0">
+                  <h3 className="px-4 py-2 text-xs font-black uppercase tracking-widest text-[var(--app-text-muted)]">Term {term.term}</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left border-collapse">
+                      <tbody>
+                        {term.records.map((r: any) => (
+                          <tr key={r.id} className="border-t border-[var(--app-border)] hover:bg-[var(--app-surface-2)]">
+                            <td className="px-4 py-3"><strong className="text-[var(--app-text)]">{r.student.fullName}</strong><div className="text-xs text-[var(--app-text-subtle)]">{r.student.admissionNumber}</div></td>
+                            <td className="px-4 py-3 text-[var(--app-text-muted)]">{r.subject?.subjectName || r.trait?.traitName || r.date || 'Term total'}</td>
+                            <td className="px-4 py-3 tabular-nums">{kind === 'grades' ? `${r.total ?? '—'} · ${r.grade || ''}` : kind === 'traitGrades' ? r.score : kind === 'attendance' ? `${r.daysPresent} / ${r.totalDays} days` : r.status}</td>
+                            <td className="px-4 py-3 text-[var(--app-text-muted)]">{r.remark || r.teacherRemark || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {term.count > term.records.length && (
+                    <p className="px-4 py-2 text-xs text-[var(--app-text-subtle)]">
+                      Showing first {term.records.length} of {term.count} records for this term.
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+          {data.total === 0 && !Array.isArray(data.groups) && (
+            <EmptyState icon="FileText" title="No records found" message="Try a different search or record collection." />
+          )}
         </section>
       )}
     </main>
