@@ -30,7 +30,7 @@ Use this board with `AGENTS.md`. Work on an isolated branch and worktree for eac
 - Branch: `hermes/sefernote-backup-domain-safety`
 - Commit: `3a07dfc`
 - Implemented by: Codex
-- Reviewed by: pending independent review
+- Reviewed by: independent Codex read-only review; no P1 security or data-loss blocker. Trailing-dot custom-domain guard fixed in integrated commit `e036279`; school-tagged browser export wording remains a later UI copy correction.
 - VERIFIED: 111 tests passed, `npm run lint` passed, `npm run build` exited successfully in isolated Linux workspace using only disposable test data.
 - NOT TESTED: authenticated desktop/mobile browser flows on this branch; no production deployment.
 - Handoff: none
@@ -73,4 +73,4 @@ Use this board with `AGENTS.md`. Work on an isolated branch and worktree for eac
 - Implemented by: Cline (REG-1 draft), Antigravity/Codex (UI-1 draft and takeover), Codex (integration and release safeguards). Independent Codex read-only reviews found and then rechecked the term/session, promotion, and school-class sequence fixes.
 - VERIFIED: 121 tests, TypeScript check, production build, staging API startup, public desktop landing and mobile login rendering, public host/API checks after release. Production browser Apply and authenticated CBT/live lesson clicks remain NOT TESTED by the release operator.
 - Deployed surface: DEVICKYS static interface plus the shared API container. `app` and `demo` keep their prior static interface. See `docs/sefernote-v1-deployment.md` for backup and rollback evidence.
-- Still blocked for platform-wide UI rollout: TENANT-LOCAL-1. SAFE-1's independent review and RECOVERY-1's off-server restore drill are follow-up checks, not claims of completion.
+- Still blocked for platform-wide UI rollout: TENANT-LOCAL-1. SAFE-1 independent review is complete, with its trailing-dot guard fix in `e036279`. RECOVERY-1's off-server restore drill remains a follow-up, not a claim of completion.

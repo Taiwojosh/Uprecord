@@ -33,3 +33,13 @@ The onboarding hotfix made no database migration. To revert only it, restore the
 - Shared-origin multi-school browser data isolation remains a separate release blocker for extending this interface to `app.ifyspace.tech`. Removed registry mirrors that are referenced by older local academic work remain on that device to preserve that work.
 
 Rollback for this update: restore the saved Caddyfile and reload Caddy, then stop/remove the current `globepen-demo` container, rename `globepen-demo-before-8d19d1e` back to `globepen-demo`, and start it. Take a fresh consistent database snapshot before rolling back after live writes; do not replace the live database with the pre-release snapshot unless a deliberate data recovery is required.
+
+### Final server guard update — 29 September 2026
+
+- Commit `e036279` normalizes the request hostname before the custom-domain removal guard. A trailing-dot form of the connected domain can no longer bypass the same-host restriction. An API regression test covers the case.
+- Verification on the isolated workspace: 122 tests passed, `npm run lint` passed, and `npm run build` exited successfully. The new Docker image was smoke-tested against the isolated staging database.
+- Production API now runs `sefernote-v1:e036279` with zero restarts at the verification point. The prior `sefernote-v1:8d19d1e` container is stopped as `globepen-demo-before-e036279`. No migration or static-file change was made in this update; DEVICKYS still uses the `8d19d1e` static release, while `app` and `demo` use their prior static release.
+- A fresh online SQLite backup passed `PRAGMA integrity_check` and is stored root-only at `/srv/globepen/shared/backups/20260929-sefernote-v1-e036279/` alongside the Caddyfile. All three public home pages and API health endpoints returned 200 after cutover; the DEVICKYS login returned 200 and `/api/tenant` resolved `devickys`.
+- SAFE-1 independent review found no P1 security or data-loss blocker. Browser export includes school-tagged local records but omits untagged legacy records; the export UI should explain that more clearly in a later interface update. The production database backup is separate from this browser export. An off-server restore drill remains unverified.
+
+For an API-only rollback of this guard update, stop/remove the current `globepen-demo`, rename `globepen-demo-before-e036279` to `globepen-demo`, and start it. Keep the live database; take a fresh consistent backup first if live writes occurred.
