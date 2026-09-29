@@ -73,6 +73,8 @@ function advanceSession(session: string | null | undefined): string {
   return `${start + 1}/${start + 2}`;
 }
 
+class StaleRegistryPlan extends Error {}
+
 const LEVEL_ORDER = ['Primary', 'junior', 'senior', 'Secondary'];
 function numericSuffix(className: string): number | null {
   const match = /(\d+)\s*$/.exec((className || '').trim());
@@ -187,6 +189,11 @@ router.post('/rollover/preview', async (req, res, next) => {
     const fromSession = settings?.currentSession || detectCurrentSession();
     const toTerm = parsed.data.targetTerm ?? advanceTerm(fromTerm);
     const toSession = parsed.data.targetSession ?? (toTerm === 1 ? advanceSession(fromSession) : fromSession);
+    const expectedTerm = advanceTerm(fromTerm);
+    const expectedSession = expectedTerm === 1 ? advanceSession(fromSession) : fromSession;
+    if (toTerm !== expectedTerm || toSession !== expectedSession) {
+      return res.status(400).json({ error: 'Preview the next academic period from the current school term.' });
+    }
     const [classes, students, teachers] = await Promise.all([
       prisma.class.findMany({ where: { schoolId }, orderBy: { className: 'asc' } }),
       prisma.student.findMany({ where: { schoolId }, orderBy: { fullName: 'asc' } }),
@@ -221,26 +228,37 @@ router.post('/rollover/preview', async (req, res, next) => {
 router.post('/rollover/apply', async (req, res, next) => {
   try {
     const schema = z.object({
+      fromTerm: z.number().int().min(1).max(3),
+      fromSession: z.string().regex(/^\d{4}\/\d{4}$/),
       targetTerm: z.number().int().min(1).max(3),
       targetSession: z.string().regex(/^\d{4}\/\d{4}$/, 'Session must look like 2025/2026'),
     }).strict();
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Please provide a valid target term and session.' });
     const schoolId = req.user!.schoolId!;
-    const settings = await prisma.schoolSettings.findUnique({ where: { schoolId } });
-    if (settings && settings.currentTerm === parsed.data.targetTerm && (settings.currentSession || null) === parsed.data.targetSession) {
-      return res.status(409).json({ error: 'The registry is already on that term and session.' });
-    }
-    const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { name: true } });
-    const data = { currentTerm: parsed.data.targetTerm, currentSession: parsed.data.targetSession, schoolName: school?.name || 'My School' };
-    const updated = await prisma.schoolSettings.upsert({
-      where: { schoolId },
-      create: { ...data, schoolId },
-      update: data,
+    const updated = await prisma.$transaction(async tx => {
+      const settings = await tx.schoolSettings.findUnique({ where: { schoolId } });
+      if (!settings) throw new StaleRegistryPlan('Set the school academic period before applying a rollover.');
+      const currentSession = settings.currentSession || detectCurrentSession();
+      const expectedTerm = advanceTerm(settings.currentTerm);
+      const expectedSession = expectedTerm === 1 ? advanceSession(currentSession) : currentSession;
+      if (settings.currentTerm !== parsed.data.fromTerm || currentSession !== parsed.data.fromSession ||
+          parsed.data.targetTerm !== expectedTerm || parsed.data.targetSession !== expectedSession) {
+        throw new StaleRegistryPlan('The school period changed. Preview the rollover again.');
+      }
+      const changed = await tx.schoolSettings.updateMany({
+        where: { schoolId, currentTerm: settings.currentTerm, currentSession: settings.currentSession },
+        data: { currentTerm: expectedTerm, currentSession: expectedSession },
+      });
+      if (changed.count !== 1) throw new StaleRegistryPlan('The school period changed. Preview the rollover again.');
+      return { currentTerm: expectedTerm, currentSession: expectedSession };
     });
     res.setHeader('Cache-Control', 'no-store');
     res.json({ schoolId, currentTerm: updated.currentTerm, currentSession: updated.currentSession, applied: true });
-  } catch (e) { next(e); }
+  } catch (e) {
+    if (e instanceof StaleRegistryPlan) return res.status(409).json({ error: e.message });
+    next(e);
+  }
 });
 
 // ─── Next-session promotion preview (preview-first, with exceptions) ─
@@ -260,9 +278,12 @@ router.post('/promotion/preview', async (req, res, next) => {
     const settings = await prisma.schoolSettings.findUnique({ where: { schoolId } });
     const fromSession = settings?.currentSession || detectCurrentSession();
     const toSession = parsed.data.targetSession ?? advanceSession(fromSession);
+    if (toSession !== advanceSession(fromSession)) {
+      return res.status(400).json({ error: 'Preview the next school session from the current one.' });
+    }
     const [classes, students] = await Promise.all([
       prisma.class.findMany({ where: { schoolId }, orderBy: { className: 'asc' } }),
-      prisma.student.findMany({ where: { schoolId }, orderBy: { fullName: 'asc' } }),
+      prisma.student.findMany({ where: { schoolId, status: 'Active' }, orderBy: { fullName: 'asc' } }),
     ]);
     const classMap = new Map(classes.map(c => [c.id, c]));
     const moves = students.map(student => {
@@ -312,8 +333,9 @@ router.post('/promotion/preview', async (req, res, next) => {
 router.post('/promotion/apply', async (req, res, next) => {
   try {
     const schema = z.object({
-      targetSession: z.string().regex(/^\d{4}\/\d{4}$/, 'Session must look like 2025/2026').optional(),
-      moves: z.array(z.object({ studentId: z.number().int().positive(), toClassId: z.number().int().positive().nullable() })).max(2000),
+      fromSession: z.string().regex(/^\d{4}\/\d{4}$/),
+      targetSession: z.string().regex(/^\d{4}\/\d{4}$/),
+      moves: z.array(z.object({ studentId: z.number().int().positive(), fromClassId: z.number().int().positive(), toClassId: z.number().int().positive().nullable() }).strict()).min(1).max(2000),
     }).strict();
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Please provide a valid promotion plan.' });
@@ -321,40 +343,46 @@ router.post('/promotion/apply', async (req, res, next) => {
     if (new Set(parsed.data.moves.map(m => m.studentId)).size !== parsed.data.moves.length) {
       return res.status(400).json({ error: 'Each student may appear only once in the promotion plan.' });
     }
-    const studentIds = [...new Set(parsed.data.moves.map(m => m.studentId))];
-    const students = await prisma.student.findMany({ where: { schoolId, id: { in: studentIds } }, select: { id: true } });
-    if (students.length !== studentIds.length) {
-      return res.status(400).json({ error: 'One or more students do not belong to your school.' });
-    }
-    const classIds = [...new Set(parsed.data.moves.filter(m => m.toClassId).map(m => m.toClassId as number))];
-    if (classIds.length) {
-      const classes = await prisma.class.findMany({ where: { schoolId, id: { in: classIds } }, select: { id: true } });
-      if (classes.length !== classIds.length) {
-        return res.status(400).json({ error: 'One or more target classes do not belong to your school.' });
+    const applied = await prisma.$transaction(async tx => {
+      const settings = await tx.schoolSettings.findUnique({ where: { schoolId } });
+      if (!settings || settings.currentTerm !== 3 || settings.currentSession !== parsed.data.fromSession ||
+          parsed.data.targetSession !== advanceSession(settings.currentSession)) {
+        throw new StaleRegistryPlan('The school session changed or Term 3 is not complete. Preview promotions again.');
       }
-    }
-    let promoted = 0;
-    let graduated = 0;
-    for (const move of parsed.data.moves) {
-      if (move.toClassId === null) {
-        const r = await prisma.student.updateMany({ where: { schoolId, id: move.studentId }, data: { status: 'Graduated' } });
-        graduated += r.count;
-      } else {
-        const r = await prisma.student.updateMany({ where: { schoolId, id: move.studentId }, data: { classId: move.toClassId } });
-        promoted += r.count;
+      const studentIds = parsed.data.moves.map(m => m.studentId);
+      const students = await tx.student.findMany({ where: { schoolId, id: { in: studentIds }, status: 'Active' }, select: { id: true, classId: true } });
+      const studentMap = new Map(students.map(s => [s.id, s]));
+      if (students.length !== studentIds.length || parsed.data.moves.some(m => studentMap.get(m.studentId)?.classId !== m.fromClassId)) {
+        throw new StaleRegistryPlan('A student or class assignment changed. Preview promotions again.');
       }
-    }
-    const settings = await prisma.schoolSettings.findUnique({ where: { schoolId } });
-    const sessionValue = parsed.data.targetSession ?? advanceSession(settings?.currentSession || detectCurrentSession());
-    const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { name: true } });
-    await prisma.schoolSettings.upsert({
-      where: { schoolId },
-      create: { schoolId, schoolName: school?.name || 'My School', currentTerm: 1, currentSession: sessionValue },
-      update: { currentTerm: 1, currentSession: sessionValue },
+      const classIds = [...new Set(parsed.data.moves.filter(m => m.toClassId !== null).map(m => m.toClassId as number))];
+      if (classIds.length) {
+        const classes = await tx.class.findMany({ where: { schoolId, id: { in: classIds } }, select: { id: true } });
+        if (classes.length !== classIds.length) throw new StaleRegistryPlan('A target class changed. Preview promotions again.');
+      }
+      let promoted = 0;
+      let graduated = 0;
+      for (const move of parsed.data.moves) {
+        const result = await tx.student.updateMany({
+          where: { schoolId, id: move.studentId, classId: move.fromClassId, status: 'Active' },
+          data: move.toClassId === null ? { status: 'Graduated' } : { classId: move.toClassId },
+        });
+        if (result.count !== 1) throw new StaleRegistryPlan('A student changed. Preview promotions again.');
+        if (move.toClassId === null) graduated++; else promoted++;
+      }
+      const changed = await tx.schoolSettings.updateMany({
+        where: { schoolId, currentTerm: 3, currentSession: parsed.data.fromSession },
+        data: { currentTerm: 1, currentSession: parsed.data.targetSession },
+      });
+      if (changed.count !== 1) throw new StaleRegistryPlan('The school session changed. Preview promotions again.');
+      return { promoted, graduated, session: parsed.data.targetSession };
     });
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ schoolId, promoted, graduated, session: sessionValue, applied: true });
-  } catch (e) { next(e); }
+    res.json({ schoolId, ...applied, applied: true });
+  } catch (e) {
+    if (e instanceof StaleRegistryPlan) return res.status(409).json({ error: e.message });
+    next(e);
+  }
 });
 
 async function mutate(req: any, res: any, next: any) {

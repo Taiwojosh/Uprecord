@@ -79,6 +79,7 @@ export interface IComment {
 export interface IClass {
   id?: number;
   schoolId?: string;
+  registryId?: number;
   className: string;
   teacherName: string;
   teacherId?: number | null;
@@ -90,6 +91,7 @@ export interface IClass {
 export interface ISubject {
   id?: number;
   schoolId?: string;
+  registryId?: number;
   subjectName: string;
   isCore: boolean;
   coreLevels?: ('Primary' | 'junior' | 'senior' | 'Secondary')[];

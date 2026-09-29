@@ -11,7 +11,7 @@ import { Field, Input, Select } from '../components/ui/Field';
 import { db, type IClass, type ISubject } from '../db/db';
 
 type Kind = 'classes' | 'students' | 'teachers' | 'subjects';
-type Row = { id: number; className?: string; level?: string; fullName?: string; admissionNumber?: string; gender?: string; classId?: number; email?: string; phone?: string; subjectName?: string; isCore?: boolean; teacherName?: string; capacity?: number };
+type Row = { id: number; className?: string; level?: string; fullName?: string; admissionNumber?: string; gender?: string; classId?: number; email?: string; phone?: string; subjectName?: string; isCore?: boolean; teacherName?: string; teacherId?: number | null; capacity?: number };
 type Registry = {
   schoolId: string;
   classes: Row[];
@@ -77,47 +77,52 @@ export function RegistryPage() {
   // (the local Dexie tables that score sheets and report cards read from).
   const syncClassesAndSubjectsToLocal = useCallback(async (registry: Registry) => {
     if (!registry.schoolId) return;
-    const localClasses = await db.classes.where('schoolId').equals(registry.schoolId).toArray();
-    const existingClassNames = new Set(localClasses.map(c => c.className.toLowerCase()));
-    for (const row of registry.classes) {
-      if (!row.className || existingClassNames.has(row.className.toLowerCase())) continue;
-      await db.classes.add({
-        schoolId: registry.schoolId,
-        className: row.className,
-        teacherName: row.teacherName || '',
-        teacherId: null,
-        level: (row.level as IClass['level']) || 'junior',
-        capacity: row.capacity,
-      });
-      existingClassNames.add(row.className.toLowerCase());
-    }
-    const localSubjects = await db.subjects.where('schoolId').equals(registry.schoolId).toArray();
-    const existingSubjectNames = new Set(localSubjects.map(s => s.subjectName.toLowerCase()));
-    for (const row of registry.subjects) {
-      if (!row.subjectName || existingSubjectNames.has(row.subjectName.toLowerCase())) continue;
-      await db.subjects.add({
-        schoolId: registry.schoolId,
-        subjectName: row.subjectName,
-        isCore: row.isCore ?? false,
-        coreLevels: ['Primary', 'junior', 'senior'],
-        departmentIds: [],
-        teacherId: null,
-        classId: row.classId,
-        classIds: row.classId ? [row.classId] : [],
-        assistantTeacherIds: [],
-      });
-      existingSubjectNames.add(row.subjectName.toLowerCase());
-    }
+    await db.transaction('rw', db.classes, db.subjects, async () => {
+      const localClasses = await db.classes.where('schoolId').equals(registry.schoolId).toArray();
+      const byRegistryId = new Map(localClasses.filter(c => c.registryId).map(c => [c.registryId!, c]));
+      const byName = new Map(localClasses.map(c => [c.className.trim().toLowerCase(), c]));
+      const localClassIdByServerId = new Map<number, number>();
+      for (const row of registry.classes) {
+        if (!row.className) continue;
+        const existing = byRegistryId.get(row.id) || byName.get(row.className.trim().toLowerCase());
+        const fields = {
+          schoolId: registry.schoolId, registryId: row.id, className: row.className,
+          teacherName: row.teacherName || '', teacherId: row.teacherId ?? null,
+          level: (row.level as IClass['level']) || 'junior', capacity: row.capacity,
+        };
+        const localId = existing?.id ? (await db.classes.update(existing.id, fields), existing.id) : await db.classes.add(fields);
+        localClassIdByServerId.set(row.id, localId);
+      }
+      const localSubjects = await db.subjects.where('schoolId').equals(registry.schoolId).toArray();
+      const bySubjectRegistryId = new Map(localSubjects.filter(s => s.registryId).map(s => [s.registryId!, s]));
+      for (const row of registry.subjects) {
+        if (!row.subjectName) continue;
+        const localClassId = row.classId ? localClassIdByServerId.get(row.classId) : undefined;
+        if (row.classId && !localClassId) throw new Error('Registered subject refers to a missing class.');
+        const existing = bySubjectRegistryId.get(row.id) || localSubjects.find(s =>
+          s.subjectName.trim().toLowerCase() === row.subjectName!.trim().toLowerCase() &&
+          (s.classId || undefined) === localClassId,
+        );
+        const fields = {
+          schoolId: registry.schoolId, registryId: row.id, subjectName: row.subjectName,
+          isCore: row.isCore ?? false, teacherId: row.teacherId ?? null,
+          classId: localClassId, classIds: localClassId ? [localClassId] : [],
+        };
+        if (existing?.id) await db.subjects.update(existing.id, fields);
+        else await db.subjects.add({ ...fields, coreLevels: ['Primary', 'junior', 'senior'] as ISubject['coreLevels'], departmentIds: [], assistantTeacherIds: [] });
+      }
+    });
   }, []);
   const load = useCallback(async () => {
     const response = await api.get<Registry>('/registry');
     if (response.data.schoolId !== schoolId) throw new Error('School context changed. Reload the page.');
     setData(response.data);
-    void syncClassesAndSubjectsToLocal(response.data).catch(() => undefined);
-    return response.data;
+    try { await syncClassesAndSubjectsToLocal(response.data); return true; }
+    catch { return false; }
   }, [schoolId, syncClassesAndSubjectsToLocal]);
   useEffect(() => {
     const controller = new AbortController();
+    let serverLoaded = false;
     setData(null);
     setLoading(true);
     setMessage('');
@@ -125,8 +130,10 @@ export function RegistryPage() {
       .then(({ data }) => {
         if (data.schoolId !== schoolId) throw new Error('School context mismatch');
         setData(data);
+        serverLoaded = true;
+        return syncClassesAndSubjectsToLocal(data);
       })
-      .catch(e => { if (!controller.signal.aborted) setMessage(e.response?.data?.error || 'Registry could not be loaded.'); })
+      .catch(e => { if (!controller.signal.aborted) setMessage(e.response?.data?.error || (serverLoaded ? 'Academic lists on this device could not refresh. Reload to retry.' : 'Registry could not be loaded.')); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [schoolId]);
@@ -139,14 +146,14 @@ export function RegistryPage() {
       if (kind === 'subjects') { body.isCore = form.isCore === 'true'; }
       if (editing) await api.put(`/registry/${kind}/${editing}`, body);
       else await api.post(`/registry/${kind}`, body);
-      setForm({}); setEditing(null); await load(); setMessage('Saved to your school registry.');
+      setForm({}); setEditing(null); const synced = await load(); setMessage(synced ? 'Saved to your school registry.' : 'Saved to your school registry. Academic lists on this device could not refresh; reload to retry.');
     } catch (e: any) { setMessage(e.response?.data?.error || 'Could not save. Please retry.'); }
     finally { setBusy(false); }
   };
   const remove = async (row: Row) => {
     if (!window.confirm(`Delete ${row.className || row.fullName || row.subjectName}? This removes the record from the school registry.`)) return;
     setBusy(true);
-    try { await api.delete(`/registry/${kind}/${row.id}`); await load(); setMessage('Record deleted.'); }
+    try { await api.delete(`/registry/${kind}/${row.id}`); const synced = await load(); setMessage(synced ? 'Record deleted.' : 'Record deleted. Academic lists on this device could not refresh; reload to retry.'); }
     catch (e: any) { setMessage(e.response?.data?.error || 'Could not delete this record.'); }
     finally { setBusy(false); }
   };
@@ -163,8 +170,8 @@ export function RegistryPage() {
     if (!window.confirm(`Advance the registry to Term ${rollover.to.term} · ${rollover.to.session}? This is preview-first: you reviewed the roster above.`)) return;
     setRolloverBusy(true); setMessage('');
     try {
-      await api.post('/registry/rollover/apply', { targetTerm: rollover.to.term, targetSession: rollover.to.session });
-      await load(); setRollover(null); setMessage('Term/session rollover applied.');
+      await api.post('/registry/rollover/apply', { fromTerm: rollover.from.term, fromSession: rollover.from.session, targetTerm: rollover.to.term, targetSession: rollover.to.session });
+      const synced = await load(); setRollover(null); setMessage(synced ? 'Term/session rollover applied.' : 'Term/session rollover applied. Academic lists on this device could not refresh; reload to retry.');
     } catch (e: any) { setMessage(e.response?.data?.error || 'Could not apply the rollover.'); }
     finally { setRolloverBusy(false); }
   };
@@ -187,15 +194,19 @@ export function RegistryPage() {
   };
   const applyPromotion = async () => {
     if (!promotion) return;
+    if (promotion.moves.some(move => move.action !== 'skip' && !move.fromClass)) {
+      setMessage('A student has no current class. Assign a class in the registry, then preview again.');
+      return;
+    }
     const moves = promotion.moves
       .filter(move => move.action !== 'skip')
-      .map(move => ({ studentId: move.studentId, toClassId: move.toClass?.id ?? null }));
+      .map(move => ({ studentId: move.studentId, fromClassId: move.fromClass!.id, toClassId: move.toClass?.id ?? null }));
     if (moves.length === 0) { setMessage('Nothing to promote — all students were kept as exceptions.'); return; }
     if (!window.confirm(`Promote ${moves.length} student(s) into ${promotion.toSession}? Preview was shown first; students marked as exceptions stay in place.`)) return;
     setPromotionBusy(true); setMessage('');
     try {
-      const { data } = await api.post<{ promoted: number; graduated: number }>('/registry/promotion/apply', { targetSession: promotion.toSession, moves });
-      await load(); setPromotion(null); setMessage(`Promotion applied: ${data.promoted} promoted, ${data.graduated} graduated.`);
+      const { data } = await api.post<{ promoted: number; graduated: number }>('/registry/promotion/apply', { fromSession: promotion.fromSession, targetSession: promotion.toSession, moves });
+      const synced = await load(); setPromotion(null); setMessage(synced ? `Promotion applied: ${data.promoted} promoted, ${data.graduated} graduated.` : `Promotion applied: ${data.promoted} promoted, ${data.graduated} graduated. Academic lists on this device could not refresh; reload to retry.`);
     } catch (e: any) { setMessage(e.response?.data?.error || 'Could not apply the promotion plan.'); }
     finally { setPromotionBusy(false); }
   };

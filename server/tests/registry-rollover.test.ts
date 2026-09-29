@@ -74,15 +74,17 @@ describe('Registry rollover, promotion and grouped history', () => {
     const settingsAfterPreview = await prisma.schoolSettings.findUnique({ where: { schoolId: school.id } });
     expect(settingsAfterPreview?.currentTerm).toBe(2);
 
-    const applied = await api('post', '/api/registry/rollover/apply').send({ targetTerm: 3, targetSession: '2025/2026' });
+    const applied = await api('post', '/api/registry/rollover/apply').send({ fromTerm: 2, fromSession: '2025/2026', targetTerm: 3, targetSession: '2025/2026' });
     expect(applied.status).toBe(200);
     expect(applied.body.applied).toBe(true);
     const settingsAfterApply = await prisma.schoolSettings.findUnique({ where: { schoolId: school.id } });
     expect(settingsAfterApply?.currentTerm).toBe(3);
 
     // Re-applying the same term/session is rejected as already current.
-    const duplicate = await api('post', '/api/registry/rollover/apply').send({ targetTerm: 3, targetSession: '2025/2026' });
+    const duplicate = await api('post', '/api/registry/rollover/apply').send({ fromTerm: 2, fromSession: '2025/2026', targetTerm: 3, targetSession: '2025/2026' });
     expect(duplicate.status).toBe(409);
+    const skipTerm = await api('post', '/api/registry/rollover/apply').send({ fromTerm: 3, fromSession: '2025/2026', targetTerm: 2, targetSession: '2026/2027' });
+    expect(skipTerm.status).toBe(409);
   });
 
   it('previews promotions and keeps exceptions in their current class', async () => {
@@ -99,11 +101,24 @@ describe('Registry rollover, promotion and grouped history', () => {
   });
 
   it('applies a promotion plan with duplicate protection and tenant checks', async () => {
+    const otherClass = await prisma.class.create({ data: { schoolId: other.id, className: 'Other Class', level: 'junior' } });
+    const invalidPlan = await api('post', '/api/registry/promotion/apply').send({
+      fromSession: '2025/2026', targetSession: '2026/2027',
+      moves: [
+        { studentId: studentA.id, fromClassId: classJss1.id, toClassId: classJss2.id },
+        { studentId: studentC.id, fromClassId: classJss1.id, toClassId: otherClass.id },
+      ],
+    });
+    expect(invalidPlan.status).toBe(409);
+    expect((await prisma.student.findUnique({ where: { id: studentA.id } }))?.classId).toBe(classJss1.id);
+    expect((await prisma.schoolSettings.findUnique({ where: { schoolId: school.id } }))?.currentSession).toBe('2025/2026');
+
     const planned = await api('post', '/api/registry/promotion/apply').send({
+      fromSession: '2025/2026',
       targetSession: '2026/2027',
       moves: [
-        { studentId: studentA.id, toClassId: classJss2.id },
-        { studentId: studentB.id, toClassId: null },
+        { studentId: studentA.id, fromClassId: classJss1.id, toClassId: classJss2.id },
+        { studentId: studentB.id, fromClassId: classSs1.id, toClassId: null },
       ],
     });
     expect(planned.status).toBe(200);
@@ -117,19 +132,25 @@ describe('Registry rollover, promotion and grouped history', () => {
 
     // A student may appear only once in the plan.
     const duplicate = await api('post', '/api/registry/promotion/apply').send({
+      fromSession: '2025/2026', targetSession: '2026/2027',
       moves: [
-        { studentId: studentC.id, toClassId: classJss2.id },
-        { studentId: studentC.id, toClassId: classSs1.id },
+        { studentId: studentC.id, fromClassId: classJss1.id, toClassId: classJss2.id },
+        { studentId: studentC.id, fromClassId: classJss1.id, toClassId: classSs1.id },
       ],
     });
     expect(duplicate.status).toBe(400);
 
     // A target class from another school is rejected.
-    const otherClass = await prisma.class.create({ data: { schoolId: other.id, className: 'Other Class', level: 'junior' } });
     const foreign = await api('post', '/api/registry/promotion/apply').send({
-      moves: [{ studentId: studentC.id, toClassId: otherClass.id }],
+      fromSession: '2025/2026', targetSession: '2026/2027',
+      moves: [{ studentId: studentC.id, fromClassId: classJss1.id, toClassId: otherClass.id }],
     });
-    expect(foreign.status).toBe(400);
+    expect(foreign.status).toBe(409);
+    const replay = await api('post', '/api/registry/promotion/apply').send({
+      fromSession: '2025/2026', targetSession: '2026/2027',
+      moves: [{ studentId: studentA.id, fromClassId: classJss1.id, toClassId: classJss2.id }],
+    });
+    expect(replay.status).toBe(409);
   });
 
   it('returns grouped history records by session and term', async () => {
