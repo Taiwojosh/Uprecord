@@ -113,8 +113,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, mobile = fals
           { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { to: '/registry', label: 'School Registry', icon: Database },
           { to: '/registry/history', label: 'Historical Records', icon: FileText },
-          { to: '/students', label: 'Students', icon: Users },
-          { to: '/teachers', label: 'Teachers', icon: UserCheck },
           { to: '/classes', label: 'Classes', icon: LayoutGrid },
           { to: '/subjects', label: 'Subjects', icon: ClipboardList },
         ]
