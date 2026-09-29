@@ -117,6 +117,19 @@ it('keeps domain challenges private and restores pending and verified settings o
   expect(r.body.dnsChallenge).toBeNull();
 });
 
+it('does not disconnect a custom domain from its own trailing-dot hostname', async () => {
+  const domain = 'portal.trailing-dot.example';
+  const challenge = await register(domain);
+  vi.spyOn(dns.promises, 'resolveTxt').mockResolvedValue([[challenge]]);
+  expect((await post('/api/schools/custom-domain/verify')).status).toBe(200);
+
+  const response = await request(app).delete('/api/schools/custom-domain')
+    .set('Host', `${domain}.`).set('Authorization', `Bearer ${token}`)
+    .send({ confirmDomain: domain });
+  expect(response.status).toBe(409);
+  expect((await prisma.school.findUnique({ where: { id: schoolId } }))?.customDomain).toBe(domain);
+});
+
 it.each(['remove', 'rotate'])('rejects a stale DNS response after challenge %s', async (action) => {
   const challenge = await register('portal.concurrent.example');
   let release!: (r: string[][]) => void;

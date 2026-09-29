@@ -6,7 +6,7 @@ import prisma from '../lib/prisma.js';
 import { authenticate } from '../middleware/auth.js';
 import { enforceTenant } from '../middleware/tenant.js';
 import { requireAdmin } from '../middleware/rbac.js';
-import { getPlatformBaseDomains, isPlatformHost } from '../config/domains.js';
+import { getPlatformBaseDomains, isPlatformHost, normalizeHostname } from '../config/domains.js';
 import type { School } from '@prisma/client';
 import type { PublicBranding, SchoolManagementResponse, DomainRegistrationResponse, DomainVerificationResponse } from '../contracts/branding.js';
 
@@ -451,7 +451,7 @@ router.delete('/custom-domain', authenticate, enforceTenant, requireAdmin, async
       res.status(404).json({ error: 'No custom domain is connected.' });
       return;
     }
-    if (req.hostname.toLowerCase() === school.customDomain.toLowerCase()) {
+    if (normalizeHostname(req.hostname) === normalizeHostname(school.customDomain)) {
       res.status(409).json({ error: 'Open your school subdomain before disconnecting this address.' });
       return;
     }
