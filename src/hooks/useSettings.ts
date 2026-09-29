@@ -47,6 +47,37 @@ const DEFAULT_SETTINGS: Omit<ISettings, 'id'> = {
   restrictUnpaidStudentsAccess: false,
 };
 
+type AcademicPeriod = { currentTerm: 1 | 2 | 3; currentSession: string };
+const periodRequests = new Map<string, Promise<AcademicPeriod>>();
+
+/** Refresh the school period from the tenant-scoped server record. */
+export function refreshSchoolAcademicPeriod(schoolId: string): Promise<AcademicPeriod> {
+  const pending = periodRequests.get(schoolId);
+  if (pending) return pending;
+  const request = (async () => {
+    const { data } = await api.get<{ settings: (AcademicPeriod & { schoolId: string }) | null }>('/settings');
+    const period = data.settings;
+    if (!period || period.schoolId !== schoolId || ![1, 2, 3].includes(period.currentTerm) || !period.currentSession) {
+      throw new Error('School academic period is unavailable');
+    }
+    await db.transaction('rw', db.settings, async () => {
+      const current = await db.settings.where('schoolId').equals(schoolId).first();
+      const values = { currentTerm: period.currentTerm, currentSession: period.currentSession };
+      if (current?.id) {
+        if (current.currentTerm !== values.currentTerm || current.currentSession !== values.currentSession) {
+          await db.settings.update(current.id, values);
+        }
+      } else {
+        await db.settings.add({ ...DEFAULT_SETTINGS, schoolId, ...values } as ISettings);
+      }
+    });
+    return { currentTerm: period.currentTerm, currentSession: period.currentSession };
+  })();
+  periodRequests.set(schoolId, request);
+  void request.finally(() => { if (periodRequests.get(schoolId) === request) periodRequests.delete(schoolId); }).catch(() => {});
+  return request;
+}
+
 /**
  * Hook for managing application-wide settings.
  * Automatically seeds default settings if none exist.
@@ -74,13 +105,27 @@ export function useSettings() {
         if (current?.id) await db.settings.update(current.id, identity);
         else await db.settings.add({ ...DEFAULT_SETTINGS, schoolId, ...identity } as ISettings);
       });
+      await refreshSchoolAcademicPeriod(schoolId);
       setLoadedSchool(schoolId);
     } catch {
-      setError('Unable to load school identity. Check your connection and retry.');
+      setError('Unable to load school settings. Check your connection and retry.');
     }
   }, [schoolId]);
 
   useEffect(() => { void loadIdentity(); }, [loadIdentity]);
+
+  useEffect(() => {
+    if (!schoolId) return;
+    const refresh = () => { if (document.visibilityState === 'visible') void refreshSchoolAcademicPeriod(schoolId).catch(() => {}); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    const timer = window.setInterval(refresh, 30_000);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+      window.clearInterval(timer);
+    };
+  }, [schoolId]);
 
   const settings = useLiveQuery(async () => {
     if (!schoolId) return undefined;
@@ -96,13 +141,17 @@ export function useSettings() {
   const updateSettings = useCallback(async (updates: Partial<ISettings>) => {
     if (!schoolId) return;
     const existing = await db.settings.where('schoolId').equals(schoolId).first();
+    const next = { ...updates };
+    if (next.currentTerm !== undefined || next.currentSession !== undefined) {
+      throw new Error('Change the school period through School Registry.');
+    }
     
     const identityFields = { schoolName: 'name', schoolSlogan: 'slogan', address: 'address', logoBase64: 'logoUrl', brandColor: 'brandColor', secondaryColor: 'secondaryColor', portalTitle: 'portalTitle' } as const;
     const identity: Record<string, string | null> = {};
     for (const [local, remote] of Object.entries(identityFields)) {
       const key = local as keyof typeof identityFields;
-      if (updates[key] !== undefined && updates[key] !== existing?.[key]) {
-        identity[remote] = updates[key] || null;
+      if (next[key] !== undefined && next[key] !== existing?.[key]) {
+        identity[remote] = next[key] || null;
       }
     }
     // Persist public identity on the server before recording a successful local save.
@@ -112,20 +161,20 @@ export function useSettings() {
     }
 
     // If caComponents or examMaxScore changes, recalculate caMaxScore
-    if (updates.caComponents || updates.examMaxScore !== undefined) {
-      const components = updates.caComponents || existing?.caComponents || DEFAULT_SETTINGS.caComponents;
+    if (next.caComponents || next.examMaxScore !== undefined) {
+      const components = next.caComponents || existing?.caComponents || DEFAULT_SETTINGS.caComponents;
       const caMax = components.reduce((sum, c) => sum + c.maxScore, 0);
-      updates.caMaxScore = caMax;
+      next.caMaxScore = caMax;
       
       // Also ensure totalSubjectScore is consistent
-      const examMax = updates.examMaxScore !== undefined ? updates.examMaxScore : (existing?.examMaxScore || DEFAULT_SETTINGS.examMaxScore);
-      updates.totalSubjectScore = caMax + examMax;
+      const examMax = next.examMaxScore !== undefined ? next.examMaxScore : (existing?.examMaxScore || DEFAULT_SETTINGS.examMaxScore);
+      next.totalSubjectScore = caMax + examMax;
     }
 
     if (existing?.id) {
-      await db.settings.update(existing.id, updates);
+      await db.settings.update(existing.id, next);
     } else {
-      await db.settings.add({ ...DEFAULT_SETTINGS, schoolId, ...updates } as ISettings);
+      await db.settings.add({ ...DEFAULT_SETTINGS, schoolId, ...next } as ISettings);
     }
   }, [schoolId, refreshBranding]);
 

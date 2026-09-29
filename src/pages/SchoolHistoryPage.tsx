@@ -70,7 +70,9 @@ export function SchoolHistoryPage() {
 
       {data && (
         <section aria-label="Historical records" className="space-y-6">
-          <p className="text-sm text-[var(--app-text-muted)]">{data.total} matching records across {data.groups?.length || 0} session(s)</p>
+          <p className="text-sm text-[var(--app-text-muted)]">
+            {data.total === 0 ? 'No matching records' : `Showing ${((data.page || page) - 1) * (data.pageSize || 2000) + 1}–${Math.min((data.page || page) * (data.pageSize || 2000), data.total)} of ${data.total} matching records`}
+          </p>
           {data.total === 0 && (
             <EmptyState icon="FileText" title="No records found" message="Try a different search or record collection." />
           )}
@@ -79,7 +81,7 @@ export function SchoolHistoryPage() {
               <div className="px-4 py-3 bg-[var(--app-surface-2)] border-b border-[var(--app-border-strong)] flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-bold text-[var(--app-text)]">Session {group.session || 'Unspecified'}</h2>
                 <span className="text-xs font-bold uppercase tracking-wider text-[var(--app-text-muted)]">
-                  {group.terms.reduce((sum, t) => sum + t.count, 0)} records
+                  {group.terms.reduce((sum, t) => sum + t.count, 0)} on this page
                 </span>
               </div>
               {group.terms.map(term => (
@@ -110,6 +112,13 @@ export function SchoolHistoryPage() {
           ))}
           {data.total === 0 && !Array.isArray(data.groups) && (
             <EmptyState icon="FileText" title="No records found" message="Try a different search or record collection." />
+          )}
+          {data.total > 0 && (page > 1 || data.hasMore) && (
+            <div className="flex items-center justify-between gap-3" aria-label="History pages">
+              <Button type="button" variant="outline" disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>Previous page</Button>
+              <span className="text-sm text-[var(--app-text-muted)]">Page {page}</span>
+              <Button type="button" variant="outline" disabled={!data.hasMore} onClick={() => setPage(value => value + 1)}>Next page</Button>
+            </div>
           )}
         </section>
       )}

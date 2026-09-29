@@ -117,9 +117,11 @@ router.get('/history', async (req, res, next) => {
     const model: any = collections[kind as keyof typeof collections];
     const counts = await Promise.all(Object.values(collections).map((m: any) => m.count({ where: { schoolId } })));
     if (grouped) {
-      // Group every saved record by session, then term, newest first so the
-      // history page can present "Session · Term 1/2/3" sections.
-      const years = await model.findMany({ where, include, orderBy: { id: 'asc' }, take: 2000 });
+      const pageSize = 2000;
+      const [total, years] = await Promise.all([
+        model.count({ where }),
+        model.findMany({ where, include, orderBy: [{ session: 'desc' }, { term: 'desc' }, { id: 'desc' }], skip: (page - 1) * pageSize, take: pageSize }),
+      ]);
       const sessions: string[] = [];
       const groups: Record<string, Record<number, any[]>> = {};
       for (const record of years) {
@@ -128,17 +130,16 @@ router.get('/history', async (req, res, next) => {
         if (!groups[session]) { groups[session] = {}; sessions.push(session); }
         (groups[session][term] ||= []).push(record);
       }
-      sessions.sort().reverse();
       const groupList = sessions.map(session => ({
         session,
         terms: Object.keys(groups[session]).map(Number).sort((a, b) => b - a).map(term => ({
           term,
           count: groups[session][term].length,
-          records: groups[session][term].slice(0, 100),
+          records: groups[session][term],
         })),
       }));
       res.setHeader('Cache-Control', 'no-store');
-      return res.json({ schoolId, grouped: true, total: years.length, groups: groupList, counts: Object.fromEntries(Object.keys(collections).map((key, i) => [key, counts[i]])) });
+      return res.json({ schoolId, grouped: true, total, page, pageSize, hasMore: page * pageSize < total, groups: groupList, counts: Object.fromEntries(Object.keys(collections).map((key, i) => [key, counts[i]])) });
     }
     const [records, total] = await Promise.all([
       model.findMany({ where, include, orderBy: { id: 'asc' }, skip: (page - 1) * 50, take: 50 }),
@@ -194,6 +195,9 @@ router.post('/rollover/preview', async (req, res, next) => {
     if (toTerm !== expectedTerm || toSession !== expectedSession) {
       return res.status(400).json({ error: 'Preview the next academic period from the current school term.' });
     }
+    if (fromTerm === 3 && await prisma.student.count({ where: { schoolId, status: 'Active' } })) {
+      return res.status(409).json({ error: 'Active students need a promotion decision. Preview and apply promotions to start the next session.' });
+    }
     const [classes, students, teachers] = await Promise.all([
       prisma.class.findMany({ where: { schoolId }, orderBy: { className: 'asc' } }),
       prisma.student.findMany({ where: { schoolId }, orderBy: { fullName: 'asc' } }),
@@ -246,6 +250,9 @@ router.post('/rollover/apply', async (req, res, next) => {
           parsed.data.targetTerm !== expectedTerm || parsed.data.targetSession !== expectedSession) {
         throw new StaleRegistryPlan('The school period changed. Preview the rollover again.');
       }
+      if (settings.currentTerm === 3 && await tx.student.count({ where: { schoolId, status: 'Active' } })) {
+        throw new StaleRegistryPlan('Active students need a promotion decision. Preview and apply promotions to start the next session.');
+      }
       const changed = await tx.schoolSettings.updateMany({
         where: { schoolId, currentTerm: settings.currentTerm, currentSession: settings.currentSession },
         data: { currentTerm: expectedTerm, currentSession: expectedSession },
@@ -278,6 +285,9 @@ router.post('/promotion/preview', async (req, res, next) => {
     const settings = await prisma.schoolSettings.findUnique({ where: { schoolId } });
     const fromSession = settings?.currentSession || detectCurrentSession();
     const toSession = parsed.data.targetSession ?? advanceSession(fromSession);
+    if (!settings || settings.currentTerm !== 3) {
+      return res.status(409).json({ error: 'Promotions are available in Term 3. Advance earlier terms with the rollover tool.' });
+    }
     if (toSession !== advanceSession(fromSession)) {
       return res.status(400).json({ error: 'Preview the next school session from the current one.' });
     }
@@ -335,12 +345,14 @@ router.post('/promotion/apply', async (req, res, next) => {
     const schema = z.object({
       fromSession: z.string().regex(/^\d{4}\/\d{4}$/),
       targetSession: z.string().regex(/^\d{4}\/\d{4}$/),
-      moves: z.array(z.object({ studentId: z.number().int().positive(), fromClassId: z.number().int().positive(), toClassId: z.number().int().positive().nullable() }).strict()).min(1).max(2000),
+      moves: z.array(z.object({ studentId: z.number().int().positive(), fromClassId: z.number().int().positive(), toClassId: z.number().int().positive().nullable() }).strict()).max(2000),
+      skipped: z.array(z.object({ studentId: z.number().int().positive(), fromClassId: z.number().int().positive() }).strict()).max(2000),
     }).strict();
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Please provide a valid promotion plan.' });
     const schoolId = req.user!.schoolId!;
-    if (new Set(parsed.data.moves.map(m => m.studentId)).size !== parsed.data.moves.length) {
+    const planned = [...parsed.data.moves, ...parsed.data.skipped];
+    if (new Set(planned.map(m => m.studentId)).size !== planned.length) {
       return res.status(400).json({ error: 'Each student may appear only once in the promotion plan.' });
     }
     const applied = await prisma.$transaction(async tx => {
@@ -349,11 +361,12 @@ router.post('/promotion/apply', async (req, res, next) => {
           parsed.data.targetSession !== advanceSession(settings.currentSession)) {
         throw new StaleRegistryPlan('The school session changed or Term 3 is not complete. Preview promotions again.');
       }
-      const studentIds = parsed.data.moves.map(m => m.studentId);
+      const studentIds = planned.map(m => m.studentId);
       const students = await tx.student.findMany({ where: { schoolId, id: { in: studentIds }, status: 'Active' }, select: { id: true, classId: true } });
       const studentMap = new Map(students.map(s => [s.id, s]));
-      if (students.length !== studentIds.length || parsed.data.moves.some(m => studentMap.get(m.studentId)?.classId !== m.fromClassId)) {
-        throw new StaleRegistryPlan('A student or class assignment changed. Preview promotions again.');
+      const activeCount = await tx.student.count({ where: { schoolId, status: 'Active' } });
+      if (!activeCount || students.length !== activeCount || planned.some(m => studentMap.get(m.studentId)?.classId !== m.fromClassId)) {
+        throw new StaleRegistryPlan('The active student roster or a class assignment changed. Preview promotions again.');
       }
       const classIds = [...new Set(parsed.data.moves.filter(m => m.toClassId !== null).map(m => m.toClassId as number))];
       if (classIds.length) {

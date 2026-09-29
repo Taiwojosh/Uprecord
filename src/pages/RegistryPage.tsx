@@ -11,7 +11,7 @@ import { Field, Input, Select } from '../components/ui/Field';
 import { db, type IClass, type ISubject } from '../db/db';
 
 type Kind = 'classes' | 'students' | 'teachers' | 'subjects';
-type Row = { id: number; className?: string; level?: string; fullName?: string; admissionNumber?: string; gender?: string; classId?: number; email?: string; phone?: string; subjectName?: string; isCore?: boolean; teacherName?: string; teacherId?: number | null; capacity?: number };
+type Row = { id: number; className?: string; level?: string; fullName?: string; admissionNumber?: string; gender?: string; status?: string; classId?: number; email?: string; phone?: string; subjectName?: string; isCore?: boolean; teacherName?: string; teacherId?: number | null; capacity?: number };
 type Registry = {
   schoolId: string;
   classes: Row[];
@@ -76,11 +76,12 @@ export function RegistryPage() {
   // Registered classes/subjects also appear in the academic subject/class lists
   // (the local Dexie tables that score sheets and report cards read from).
   const syncClassesAndSubjectsToLocal = useCallback(async (registry: Registry) => {
-    if (!registry.schoolId) return;
-    await db.transaction('rw', db.classes, db.subjects, async () => {
+    if (!registry.schoolId) return 0;
+    return db.transaction('rw', [db.classes, db.subjects, db.students, db.grades, db.dailyAttendance, db.curriculum, db.lessonNotes, db.resultApprovals], async () => {
+      let preserved = 0;
       const localClasses = await db.classes.where('schoolId').equals(registry.schoolId).toArray();
       const byRegistryId = new Map(localClasses.filter(c => c.registryId).map(c => [c.registryId!, c]));
-      const byName = new Map(localClasses.map(c => [c.className.trim().toLowerCase(), c]));
+      const byName = new Map(localClasses.filter(c => !c.registryId).map(c => [c.className.trim().toLowerCase(), c]));
       const localClassIdByServerId = new Map<number, number>();
       for (const row of registry.classes) {
         if (!row.className) continue;
@@ -99,7 +100,7 @@ export function RegistryPage() {
         if (!row.subjectName) continue;
         const localClassId = row.classId ? localClassIdByServerId.get(row.classId) : undefined;
         if (row.classId && !localClassId) throw new Error('Registered subject refers to a missing class.');
-        const existing = bySubjectRegistryId.get(row.id) || localSubjects.find(s =>
+        const existing = bySubjectRegistryId.get(row.id) || localSubjects.find(s => !s.registryId &&
           s.subjectName.trim().toLowerCase() === row.subjectName!.trim().toLowerCase() &&
           (s.classId || undefined) === localClassId,
         );
@@ -111,14 +112,40 @@ export function RegistryPage() {
         if (existing?.id) await db.subjects.update(existing.id, fields);
         else await db.subjects.add({ ...fields, coreLevels: ['Primary', 'junior', 'senior'] as ISubject['coreLevels'], departmentIds: [], assistantTeacherIds: [] });
       }
+      const currentSubjectIds = new Set(registry.subjects.map(row => row.id));
+      for (const subject of localSubjects) {
+        if (!subject.id || !subject.registryId || currentSubjectIds.has(subject.registryId)) continue;
+        const referenced = Boolean(
+          await db.grades.filter(row => row.subjectId === subject.id).first() ||
+          await db.curriculum.filter(row => row.subjectId === subject.id).first() ||
+          await db.lessonNotes.filter(row => row.subjectId === subject.id).first()
+        );
+        if (referenced) preserved++;
+        else await db.subjects.delete(subject.id);
+      }
+      const currentClassIds = new Set(registry.classes.map(row => row.id));
+      for (const schoolClass of localClasses) {
+        if (!schoolClass.id || !schoolClass.registryId || currentClassIds.has(schoolClass.registryId)) continue;
+        const referenced = Boolean(
+          await db.students.filter(row => row.classId === schoolClass.id).first() ||
+          await db.dailyAttendance.filter(row => row.classId === schoolClass.id).first() ||
+          await db.curriculum.filter(row => row.classId === schoolClass.id).first() ||
+          await db.lessonNotes.filter(row => row.classId === schoolClass.id).first() ||
+          await db.resultApprovals.filter(row => row.classId === schoolClass.id).first() ||
+          await db.subjects.filter(row => row.classId === schoolClass.id || Boolean(row.classIds?.includes(schoolClass.id!))).first()
+        );
+        if (referenced) preserved++;
+        else await db.classes.delete(schoolClass.id);
+      }
+      return preserved;
     });
   }, []);
   const load = useCallback(async () => {
     const response = await api.get<Registry>('/registry');
     if (response.data.schoolId !== schoolId) throw new Error('School context changed. Reload the page.');
     setData(response.data);
-    try { await syncClassesAndSubjectsToLocal(response.data); return true; }
-    catch { return false; }
+    try { return { synced: true, preserved: await syncClassesAndSubjectsToLocal(response.data) }; }
+    catch { return { synced: false, preserved: 0 }; }
   }, [schoolId, syncClassesAndSubjectsToLocal]);
   useEffect(() => {
     const controller = new AbortController();
@@ -131,7 +158,9 @@ export function RegistryPage() {
         if (data.schoolId !== schoolId) throw new Error('School context mismatch');
         setData(data);
         serverLoaded = true;
-        return syncClassesAndSubjectsToLocal(data);
+        return syncClassesAndSubjectsToLocal(data).then(preserved => {
+          if (!controller.signal.aborted && preserved) setMessage(`${preserved} removed registry record(s) remain on this device because saved academic work still references them.`);
+        });
       })
       .catch(e => { if (!controller.signal.aborted) setMessage(e.response?.data?.error || (serverLoaded ? 'Academic lists on this device could not refresh. Reload to retry.' : 'Registry could not be loaded.')); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
@@ -146,14 +175,14 @@ export function RegistryPage() {
       if (kind === 'subjects') { body.isCore = form.isCore === 'true'; }
       if (editing) await api.put(`/registry/${kind}/${editing}`, body);
       else await api.post(`/registry/${kind}`, body);
-      setForm({}); setEditing(null); const synced = await load(); setMessage(synced ? 'Saved to your school registry.' : 'Saved to your school registry. Academic lists on this device could not refresh; reload to retry.');
+      setForm({}); setEditing(null); const sync = await load(); setMessage(sync.synced ? (sync.preserved ? `Saved to your school registry. ${sync.preserved} removed record(s) remain on this device because saved academic work still references them.` : 'Saved to your school registry.') : 'Saved to your school registry. Academic lists on this device could not refresh; reload to retry.');
     } catch (e: any) { setMessage(e.response?.data?.error || 'Could not save. Please retry.'); }
     finally { setBusy(false); }
   };
   const remove = async (row: Row) => {
     if (!window.confirm(`Delete ${row.className || row.fullName || row.subjectName}? This removes the record from the school registry.`)) return;
     setBusy(true);
-    try { await api.delete(`/registry/${kind}/${row.id}`); const synced = await load(); setMessage(synced ? 'Record deleted.' : 'Record deleted. Academic lists on this device could not refresh; reload to retry.'); }
+    try { await api.delete(`/registry/${kind}/${row.id}`); const sync = await load(); setMessage(sync.synced ? (sync.preserved ? `Record deleted from the registry. ${sync.preserved} local record(s) remain on this device because saved academic work still references them.` : 'Record deleted.') : 'Record deleted. Academic lists on this device could not refresh; reload to retry.'); }
     catch (e: any) { setMessage(e.response?.data?.error || 'Could not delete this record.'); }
     finally { setBusy(false); }
   };
@@ -171,7 +200,7 @@ export function RegistryPage() {
     setRolloverBusy(true); setMessage('');
     try {
       await api.post('/registry/rollover/apply', { fromTerm: rollover.from.term, fromSession: rollover.from.session, targetTerm: rollover.to.term, targetSession: rollover.to.session });
-      const synced = await load(); setRollover(null); setMessage(synced ? 'Term/session rollover applied.' : 'Term/session rollover applied. Academic lists on this device could not refresh; reload to retry.');
+      const sync = await load(); setRollover(null); setMessage(sync.synced ? 'Term/session rollover applied.' : 'Term/session rollover applied. Academic lists on this device could not refresh; reload to retry.');
     } catch (e: any) { setMessage(e.response?.data?.error || 'Could not apply the rollover.'); }
     finally { setRolloverBusy(false); }
   };
@@ -194,19 +223,22 @@ export function RegistryPage() {
   };
   const applyPromotion = async () => {
     if (!promotion) return;
-    if (promotion.moves.some(move => move.action !== 'skip' && !move.fromClass)) {
+    if (promotion.moves.some(move => !move.fromClass)) {
       setMessage('A student has no current class. Assign a class in the registry, then preview again.');
       return;
     }
     const moves = promotion.moves
       .filter(move => move.action !== 'skip')
       .map(move => ({ studentId: move.studentId, fromClassId: move.fromClass!.id, toClassId: move.toClass?.id ?? null }));
-    if (moves.length === 0) { setMessage('Nothing to promote — all students were kept as exceptions.'); return; }
-    if (!window.confirm(`Promote ${moves.length} student(s) into ${promotion.toSession}? Preview was shown first; students marked as exceptions stay in place.`)) return;
+    const skipped = promotion.moves
+      .filter(move => move.action === 'skip')
+      .map(move => ({ studentId: move.studentId, fromClassId: move.fromClass!.id }));
+    if (moves.length + skipped.length === 0) { setMessage('There are no active students to promote. Use term / session rollover to start the next session.'); return; }
+    if (!window.confirm(`Start ${promotion.toSession} with ${promotion.summary.promote} promoted, ${promotion.summary.graduate} graduated, and ${skipped.length} kept in their current classes?`)) return;
     setPromotionBusy(true); setMessage('');
     try {
-      const { data } = await api.post<{ promoted: number; graduated: number }>('/registry/promotion/apply', { fromSession: promotion.fromSession, targetSession: promotion.toSession, moves });
-      const synced = await load(); setPromotion(null); setMessage(synced ? `Promotion applied: ${data.promoted} promoted, ${data.graduated} graduated.` : `Promotion applied: ${data.promoted} promoted, ${data.graduated} graduated. Academic lists on this device could not refresh; reload to retry.`);
+      const { data } = await api.post<{ promoted: number; graduated: number }>('/registry/promotion/apply', { fromSession: promotion.fromSession, targetSession: promotion.toSession, moves, skipped });
+      const sync = await load(); setPromotion(null); setMessage(sync.synced ? `Promotion applied: ${data.promoted} promoted, ${data.graduated} graduated.` : `Promotion applied: ${data.promoted} promoted, ${data.graduated} graduated. Academic lists on this device could not refresh; reload to retry.`);
     } catch (e: any) { setMessage(e.response?.data?.error || 'Could not apply the promotion plan.'); }
     finally { setPromotionBusy(false); }
   };
@@ -216,6 +248,7 @@ export function RegistryPage() {
     </main>
   );
   const okTone = message.startsWith('Saved') || message.startsWith('Record deleted') || message.startsWith('Term/session') || message.startsWith('Promotion applied');
+  const needsPromotion = data?.termInfo?.currentTerm === 3 && data.students.some(student => student.status === 'Active');
   const kindIcon = META[kind].icon;
   return (
     <main className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
@@ -247,12 +280,12 @@ export function RegistryPage() {
               <h2 className="font-bold text-[var(--app-text)]">Term / session rollover</h2>
               <p className="text-sm text-[var(--app-text-muted)]">
                 Currently: Term {data?.termInfo?.currentTerm ?? '—'} · {data?.termInfo?.currentSession || '—'}.
-                Preview keeps the roster intact and only advances the academic period.
+                {needsPromotion ? ' Finish the year with a promotion plan first; that plan starts the new session.' : ' Preview keeps the roster intact and advances the academic period.'}
               </p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" loading={rolloverBusy} disabled={!data || busy || promotionBusy} onClick={previewRollover}>
+            <Button type="button" variant="outline" size="sm" loading={rolloverBusy} disabled={!data || busy || promotionBusy || needsPromotion} onClick={previewRollover}>
               <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" /> Preview next period
             </Button>
             {rollover && (
@@ -265,7 +298,7 @@ export function RegistryPage() {
             <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] p-4 text-sm space-y-2">
               <p className="font-semibold text-[var(--app-text)]">
                 {rollover.from.term}·{rollover.from.session} → {rollover.to.term}·{rollover.to.session}
-                {rollover.isSameSession ? ' (same session)' : ' (new session — promotions available)'}
+                {rollover.isSameSession ? ' (same session)' : ' (new session; no active students to promote)'}
               </p>
               <p className="text-[var(--app-text-muted)]">
                 {rollover.rollover.classes.length} class(es) · {rollover.rollover.studentCount} student(s) · {rollover.rollover.teacherCount} teacher(s) carry into the next period.
@@ -288,12 +321,12 @@ export function RegistryPage() {
             <div>
               <h2 className="font-bold text-[var(--app-text)]">Next-session promotion</h2>
               <p className="text-sm text-[var(--app-text-muted)]">
-                Preview which students move to the next class for a new session. Students can be kept as exceptions before you apply.
+                Available in Term 3. Preview every active student's next class, then apply to start the new session. You can keep students as exceptions.
               </p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" loading={promotionBusy} disabled={!data || busy || rolloverBusy} onClick={() => previewPromotion('')}>
+            <Button type="button" variant="outline" size="sm" loading={promotionBusy} disabled={!data || data.termInfo.currentTerm !== 3 || busy || rolloverBusy} onClick={() => previewPromotion('')}>
               <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Preview promotions
             </Button>
             {promotion && (

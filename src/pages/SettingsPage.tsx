@@ -57,8 +57,6 @@ export const SettingsPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   
-  const [isRollingOver, setIsRollingOver] = useState(false);
-  const [isRolloverConfirmOpen, setIsRolloverConfirmOpen] = useState(false);
   const [isResetTraitsConfirmOpen, setIsResetTraitsConfirmOpen] = useState(false);
   
   const [isTraitModalOpen, setIsTraitModalOpen] = useState(false);
@@ -85,14 +83,18 @@ export const SettingsPage: React.FC = () => {
   useEffect(() => {
     if (!settings || Object.keys(formData).length === 0) return;
 
-    // Check if formData actually differs from settings to avoid redundant saves
-    const hasChanges = JSON.stringify(formData) !== JSON.stringify(settings);
-    if (!hasChanges) return;
+    // Save only edited fields. A registry transition may refresh the period
+    // while this page is open; an old form must never write it back.
+    const changes = Object.fromEntries(Object.entries(formData).filter(([key, value]) =>
+      key !== 'id' && key !== 'schoolId' && key !== 'currentTerm' && key !== 'currentSession' &&
+      JSON.stringify(value) !== JSON.stringify(settings[key as keyof ISettings])
+    )) as Partial<ISettings>;
+    if (Object.keys(changes).length === 0) return;
 
     setSaveStatus('saving');
     const timer = setTimeout(async () => {
       try {
-        await updateSettings(formData);
+        await updateSettings(changes);
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus('idle'), 2000);
       } catch (error) {
@@ -103,23 +105,6 @@ export const SettingsPage: React.FC = () => {
 
     return () => clearTimeout(timer);
   }, [formData, settings, updateSettings, showToast]);
-
-  const handleRollover = async () => {
-    setIsRollingOver(true);
-    try {
-      const nextTerm = settings!.currentTerm === 3 ? 1 : settings!.currentTerm + 1;
-      const updates: Partial<ISettings> = { currentTerm: nextTerm as 1|2|3 };
-      
-      await updateSettings(updates);
-      showToast('Session/Term rollover completed successfully', 'success');
-      logAction('SESSION_ROLLOVER', `Executed transition to Term ${nextTerm}`);
-    } catch (e) {
-      showToast('Rollover operation failed', 'error');
-    } finally {
-      setIsRollingOver(false);
-      setIsRolloverConfirmOpen(false);
-    }
-  };
 
   const handleResetTraits = async () => {
     try {
@@ -525,27 +510,22 @@ export const SettingsPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-700 tracking-tight">Current Term</label>
-                    <select 
-                      value={formData.currentTerm}
-                      onChange={(e) => setFormData({ ...formData, currentTerm: Number(e.target.value) as 1|2|3 })}
-                      className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-gray-900 appearance-none"
-                    >
-                      <option value={1}>First Term</option>
-                      <option value={2}>Second Term</option>
-                      <option value={3}>Third Term</option>
-                    </select>
+                    <p className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-gray-900">
+                      {settings.currentTerm === 1 ? 'First Term' : settings.currentTerm === 2 ? 'Second Term' : 'Third Term'}
+                    </p>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-700 tracking-tight">Current Session</label>
-                    <input 
-                      type="text" 
-                      value={formData.currentSession || ''}
-                      onChange={(e) => setFormData({ ...formData, currentSession: e.target.value })}
-                      placeholder="e.g. 2024/2025"
-                      className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-gray-900"
-                    />
+                    <p className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-gray-900">
+                      {settings.currentSession}
+                    </p>
                   </div>
+
+                  <p className="sm:col-span-2 text-sm text-gray-600">
+                    To change the term or session, preview and apply the transition in{' '}
+                    <button type="button" onClick={() => navigate('/registry')} className="font-bold text-blue-700 underline">School Registry</button>.
+                  </p>
 
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-700 tracking-tight">Current Term Resumption</label>
@@ -716,13 +696,13 @@ export const SettingsPage: React.FC = () => {
                 <div className="bg-white/5 p-8 rounded-3xl border border-white/10 space-y-4 flex flex-col justify-between">
                     <div className="space-y-2">
                       <h3 className="text-sm font-black uppercase tracking-tight">Term Rollover</h3>
-                      <p className="text-[0.625rem] font-medium text-gray-400 leading-relaxed uppercase">Prepare registry for the next term. All current term grade entries will be locked and archived.</p>
+                      <p className="text-[0.625rem] font-medium text-gray-400 leading-relaxed uppercase">Preview the next term and apply the transition in School Registry.</p>
                     </div>
                     <button 
-                      onClick={() => setIsRolloverConfirmOpen(true)}
+                      onClick={() => navigate('/registry')}
                       className="w-full py-4 bg-white text-slate-900 text-[0.625rem] font-black uppercase tracking-widest rounded-xl hover:bg-blue-400 hover:text-white transition-all"
                     >
-                      Execute Transition
+                      Open Registry Preview
                     </button>
                 </div>
 
@@ -731,8 +711,8 @@ export const SettingsPage: React.FC = () => {
                       <h3 className="text-sm font-black uppercase tracking-tight">Global Promotion</h3>
                       <p className="text-[0.625rem] font-black text-blue-100 leading-relaxed uppercase opacity-80">Increment school session and promote all active students to the next registry level.</p>
                     </div>
-                    <button className="w-full py-4 bg-slate-900 text-white text-[0.625rem] font-black uppercase tracking-widest rounded-xl hover:bg-black transition-all">
-                      Commence Promotion
+                    <button onClick={() => navigate('/registry')} className="w-full py-4 bg-slate-900 text-white text-[0.625rem] font-black uppercase tracking-widest rounded-xl hover:bg-black transition-all">
+                      Open Promotion Preview
                     </button>
                 </div>
               </div>
@@ -769,14 +749,6 @@ export const SettingsPage: React.FC = () => {
         onClose={() => setIsTraitModalOpen(false)}
         editingItem={editingTrait}
         schoolId={schoolId!}
-      />
-
-      <ConfirmDialog 
-        isOpen={isRolloverConfirmOpen}
-        title="Execute Session Rollover"
-        message="Are you sure you want to transition to the next academic term? This protocol prepares the registry for fresh entries. Ensure all reports are exported."
-        onConfirm={handleRollover}
-        onClose={() => setIsRolloverConfirmOpen(false)}
       />
 
       <ConfirmDialog 

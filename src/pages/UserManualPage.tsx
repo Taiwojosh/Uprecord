@@ -9,8 +9,9 @@ type GuideStep = { title: string; description: string; to: string; link: string 
 
 const guides: Record<GuideRole, GuideStep[]> = {
   admin: [
-    { title: 'Set up your school', description: 'Check the school name, logo, colours, current term and session.', to: '/settings', link: 'Open settings' },
+    { title: 'Set up your school', description: 'Check the school name, logo and colours.', to: '/settings', link: 'Open settings' },
     { title: 'Add people', description: 'Register students and teachers, or review their school records.', to: '/registry', link: 'Open School Registry' },
+    { title: 'Start a new term', description: 'Preview the next term in School Registry. In Term 3, review student promotions to begin the new session.', to: '/registry', link: 'Open School Registry' },
     { title: 'Prepare teaching', description: 'Review classes and subjects before teachers start lesson plans.', to: '/classes', link: 'Open classes' },
     { title: 'Give portal access', description: 'Create accounts and share each person’s private setup link.', to: '/account-creator', link: 'Open portal accounts' },
     { title: 'Check results', description: 'Review scores and reports before sharing them with families.', to: '/results', link: 'Open results' },
