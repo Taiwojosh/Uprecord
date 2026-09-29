@@ -66,3 +66,11 @@ Use this board with `AGENTS.md`. Work on an isolated branch and worktree for eac
 - Implemented by: pending
 - Reviewed by: pending
 - Handoff: none
+
+### DEVICKYS pilot release handoff (29 September 2026)
+
+- Integrated branch: `hermes/sefernote-v1-integrated`; code commits `93cf7ed`, `6961f43`, `3e3096d`, `8d19d1e`.
+- Implemented by: Cline (REG-1 draft), Antigravity/Codex (UI-1 draft and takeover), Codex (integration and release safeguards). Independent Codex read-only reviews found and then rechecked the term/session, promotion, and school-class sequence fixes.
+- VERIFIED: 121 tests, TypeScript check, production build, staging API startup, public desktop landing and mobile login rendering, public host/API checks after release. Production browser Apply and authenticated CBT/live lesson clicks remain NOT TESTED by the release operator.
+- Deployed surface: DEVICKYS static interface plus the shared API container. `app` and `demo` keep their prior static interface. See `docs/sefernote-v1-deployment.md` for backup and rollback evidence.
+- Still blocked for platform-wide UI rollout: TENANT-LOCAL-1. SAFE-1's independent review and RECOVERY-1's off-server restore drill are follow-up checks, not claims of completion.
