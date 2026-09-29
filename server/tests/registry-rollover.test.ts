@@ -7,7 +7,7 @@ import prisma from '../src/lib/prisma.js';
 describe('Registry rollover, promotion and grouped history', () => {
   let school: any, other: any;
   let token: string, otherToken: string;
-  let classJss1: any, classJss2: any, classSs1: any;
+  let classJss1: any, classJss2: any, classSs1: any, classSs3: any;
   let studentA: any, studentB: any, studentC: any;
 
   beforeAll(async () => {
@@ -22,9 +22,10 @@ describe('Registry rollover, promotion and grouped history', () => {
     classJss1 = await prisma.class.create({ data: { schoolId: school.id, className: 'JSS 1', level: 'junior' } });
     classJss2 = await prisma.class.create({ data: { schoolId: school.id, className: 'JSS 2', level: 'junior' } });
     classSs1 = await prisma.class.create({ data: { schoolId: school.id, className: 'SS 1', level: 'senior' } });
+    classSs3 = await prisma.class.create({ data: { schoolId: school.id, className: 'SS 3', level: 'senior' } });
 
     studentA = await prisma.student.create({ data: { schoolId: school.id, classId: classJss1.id, fullName: 'Alpha Student One', admissionNumber: 'PAC-0001', gender: 'Female' } });
-    studentB = await prisma.student.create({ data: { schoolId: school.id, classId: classSs1.id, fullName: 'Alpha Student Two', admissionNumber: 'PAC-0002', gender: 'Male' } });
+    studentB = await prisma.student.create({ data: { schoolId: school.id, classId: classSs3.id, fullName: 'Alpha Student Two', admissionNumber: 'PAC-0002', gender: 'Male' } });
     studentC = await prisma.student.create({ data: { schoolId: school.id, classId: classJss1.id, fullName: 'Alpha Student Three', admissionNumber: 'PAC-0003', gender: 'Male' } });
     await prisma.schoolSettings.create({ data: { schoolId: school.id, schoolName: 'Pilot Alpha College', currentTerm: 2, currentSession: '2025/2026' } });
   });
@@ -115,7 +116,7 @@ describe('Registry rollover, promotion and grouped history', () => {
       .map(s => ({ studentId: s.id, fromClassId: s.classId }));
     const invalidPlan = await api('post', '/api/registry/promotion/apply').send({
       fromSession: '2025/2026', targetSession: '2026/2027',
-      skipped: [{ studentId: studentB.id, fromClassId: classSs1.id }, ...skipped],
+      skipped: [{ studentId: studentB.id, fromClassId: classSs3.id }, ...skipped],
       moves: [
         { studentId: studentA.id, fromClassId: classJss1.id, toClassId: classJss2.id },
         { studentId: studentC.id, fromClassId: classJss1.id, toClassId: otherClass.id },
@@ -137,7 +138,7 @@ describe('Registry rollover, promotion and grouped history', () => {
       skipped: [{ studentId: studentC.id, fromClassId: classJss1.id }, ...skipped],
       moves: [
         { studentId: studentA.id, fromClassId: classJss1.id, toClassId: classJss2.id },
-        { studentId: studentB.id, fromClassId: classSs1.id, toClassId: null },
+        { studentId: studentB.id, fromClassId: classSs3.id, toClassId: null },
       ],
     });
     expect(planned.status).toBe(200);
@@ -198,6 +199,35 @@ describe('Registry rollover, promotion and grouped history', () => {
     const bypass = await api('put', '/api/settings').send({ currentTerm: 3, currentSession: '2027/2028' });
     expect(bypass.status).toBe(400);
     expect((await prisma.schoolSettings.findUnique({ where: { schoolId: school.id } }))?.currentSession).toBe('2026/2027');
+  });
+
+  it('matches streamed class names conservatively and applies a preview when the stored session is null', async () => {
+    const streamSchool = await prisma.school.create({ data: { name: 'Stream School', slug: 'stream-school' } });
+    await prisma.user.create({ data: { schoolId: streamSchool.id, email: 'streams@pilot.test', fullName: 'Stream Admin', role: 'admin', passwordHash: await bcrypt.hash('PilotPassword#123', 10) } });
+    const streamToken = (await request(app).post('/api/auth/login').set('Host', 'localhost').send({ email: 'streams@pilot.test', password: 'PilotPassword#123' })).body.token;
+    const names = ['JSS 1 Green', 'JSS 2 Green', 'JSS 2 Red', 'JSS 3 Green', 'SS 1 Green', 'SS 2 Green', 'SS 3 Green', 'Unnamed'] as const;
+    const rows = await Promise.all(names.map(className => prisma.class.create({ data: { schoolId: streamSchool.id, className, level: 'junior' } })));
+    const byName = new Map(rows.map(row => [row.className, row]));
+    const sourceNames = ['JSS 1 Green', 'JSS 3 Green', 'SS 1 Green', 'SS 3 Green', 'Unnamed'] as const;
+    const students = await Promise.all(sourceNames.map((className, index) => prisma.student.create({ data: {
+      schoolId: streamSchool.id, classId: byName.get(className)!.id, fullName: `Stream Student ${index + 1}`,
+      admissionNumber: `STR-${index + 1}`, gender: 'Female',
+    } })));
+    await prisma.schoolSettings.create({ data: { schoolId: streamSchool.id, schoolName: streamSchool.name, currentTerm: 3, currentSession: null } });
+    const preview = await api('post', '/api/registry/promotion/preview', streamToken).send({});
+    expect(preview.status).toBe(200);
+    const proposed = new Map(preview.body.moves.map((move: any) => [move.studentId, move]));
+    expect((proposed.get(students[0].id) as any)?.toClass?.className).toBe('JSS 2 Green');
+    expect((proposed.get(students[1].id) as any)?.toClass?.className).toBe('SS 1 Green');
+    expect((proposed.get(students[2].id) as any)?.toClass?.className).toBe('SS 2 Green');
+    expect((proposed.get(students[3].id) as any)?.action).toBe('graduate');
+    expect((proposed.get(students[4].id) as any)?.action).toBe('skip');
+    const applied = await api('post', '/api/registry/promotion/apply', streamToken).send({
+      fromSession: preview.body.fromSession, targetSession: preview.body.toSession, moves: [],
+      skipped: students.map(student => ({ studentId: student.id, fromClassId: student.classId })),
+    });
+    expect(applied.status).toBe(200);
+    expect((await prisma.schoolSettings.findUnique({ where: { schoolId: streamSchool.id } }))?.currentSession).toBe(preview.body.toSession);
   });
 
   it('returns grouped history records by session and term', async () => {

@@ -75,33 +75,35 @@ function advanceSession(session: string | null | undefined): string {
 
 class StaleRegistryPlan extends Error {}
 
-const LEVEL_ORDER = ['Primary', 'junior', 'senior', 'Secondary'];
-function numericSuffix(className: string): number | null {
-  const match = /(\d+)\s*$/.exec((className || '').trim());
-  return match ? Number(match[1]) : null;
+type GradeStage = 'primary' | 'junior' | 'senior';
+type ParsedClass = { stage: GradeStage; year: number; stream: string };
+function parseClassName(className: string): ParsedClass | null {
+  const match = /^([A-Za-z][A-Za-z .-]*?)\s*(\d{1,2})(?:\s+(.+))?$/.exec(className.trim());
+  if (!match) return null;
+  const prefix = match[1].replace(/[^A-Za-z]/g, '').toLowerCase();
+  const stage: GradeStage | null = ['primary', 'pry'].includes(prefix) ? 'primary'
+    : ['jss', 'js', 'juniorsecondary'].includes(prefix) ? 'junior'
+    : ['ss', 'sss', 'seniorsecondary'].includes(prefix) ? 'senior' : null;
+  if (!stage) return null;
+  return { stage, year: Number(match[2]), stream: (match[3] || '').trim().toLowerCase().replace(/\s+/g, ' ') };
 }
-// Returns the recommended next class row for a student, or null when the
-// student should be marked as graduated. Uses exact level ladder ordering and
-// the numeric suffix within a level so "JSS 1" -> "JSS 2" -> "SS 1". Ties are
-// broken deterministically by class name.
-function recommendNextClass(level: string, className: string, classes: any[]): any | null {
-  const levelIndex = LEVEL_ORDER.indexOf(level);
-  const suffix = numericSuffix(className);
-  if (levelIndex >= 0 && suffix != null) {
-    const sameLevelNext = classes
-      .filter(c => c.level === level && numericSuffix(c.className) === suffix + 1)
-      .sort((a, b) => a.className.localeCompare(b.className));
-    if (sameLevelNext.length > 0) return sameLevelNext[0];
-  }
-  if (levelIndex >= 0) {
-    for (let nextIdx = levelIndex + 1; nextIdx < LEVEL_ORDER.length; nextIdx += 1) {
-      const candidates = classes
-        .filter(c => c.level === LEVEL_ORDER[nextIdx])
-        .sort((a, b) => a.className.localeCompare(b.className));
-      if (candidates.length > 0) return candidates[0];
-    }
-  }
-  return null;
+// Never guess from the `level` column: imported schools may classify SS as
+// "junior". Unknown names or ambiguous streams stay in the current class.
+function recommendNextClass(className: string, classes: { className: string }[]): { next: any | null; graduate: boolean } {
+  const current = parseClassName(className);
+  if (!current) return { next: null, graduate: false };
+  const lastYear = current.stage === 'primary' ? 6 : 3;
+  if (current.year < 1 || current.year > lastYear) return { next: null, graduate: false };
+  if (current.stage === 'senior' && current.year === lastYear) return { next: null, graduate: true };
+  const target: Pick<ParsedClass, 'stage' | 'year'> = current.year < lastYear
+    ? { stage: current.stage, year: current.year + 1 }
+    : current.stage === 'primary' ? { stage: 'junior', year: 1 } : { stage: 'senior', year: 1 };
+  const candidates = classes.filter(row => {
+    const parsed = parseClassName(row.className);
+    return parsed?.stage === target.stage && parsed.year === target.year &&
+      (!current.stream || parsed.stream === current.stream);
+  });
+  return { next: candidates.length === 1 ? candidates[0] : null, graduate: false };
 }
 router.get('/history', async (req, res, next) => {
   try {
@@ -312,17 +314,17 @@ router.post('/promotion/preview', async (req, res, next) => {
       } else if (!current) {
         return { studentId: student.id, fullName: student.fullName, admissionNumber: student.admissionNumber, status: student.status, fromClass: null, toClass: null, action: 'skip', reason: 'Student is not assigned to a class.' };
       } else {
-        const next = recommendNextClass(current.level, current.className, classes);
-        toClass = next ? { id: next.id, className: next.className, level: next.level } : null;
-        action = next ? 'promote' : 'graduate';
+        const recommendation = recommendNextClass(current.className, classes);
+        toClass = recommendation.next ? { id: recommendation.next.id, className: recommendation.next.className, level: recommendation.next.level } : null;
+        action = recommendation.next ? 'promote' : recommendation.graduate ? 'graduate' : 'skip';
       }
       const from = current ? { id: current.id, className: current.className, level: current.level } : null;
       const to = toClass ? { id: toClass.id, className: toClass.className, level: toClass.level } : null;
       const reason = action === 'graduate'
-        ? 'No higher class available in this school.'
+        ? 'Final senior class; graduation is proposed for review.'
         : action === 'promote'
           ? 'Moves to the next academic level / class.'
-          : 'Kept in current class.';
+          : 'No clear next class match; keep in place and review the assignment.';
       return { studentId: student.id, fullName: student.fullName, admissionNumber: student.admissionNumber, status: student.status, fromClass: from, toClass: to, action, reason };
     });
     res.setHeader('Cache-Control', 'no-store');
@@ -357,8 +359,9 @@ router.post('/promotion/apply', async (req, res, next) => {
     }
     const applied = await prisma.$transaction(async tx => {
       const settings = await tx.schoolSettings.findUnique({ where: { schoolId } });
-      if (!settings || settings.currentTerm !== 3 || settings.currentSession !== parsed.data.fromSession ||
-          parsed.data.targetSession !== advanceSession(settings.currentSession)) {
+      const currentSession = settings?.currentSession || detectCurrentSession();
+      if (!settings || settings.currentTerm !== 3 || currentSession !== parsed.data.fromSession ||
+          parsed.data.targetSession !== advanceSession(currentSession)) {
         throw new StaleRegistryPlan('The school session changed or Term 3 is not complete. Preview promotions again.');
       }
       const studentIds = planned.map(m => m.studentId);
@@ -384,7 +387,7 @@ router.post('/promotion/apply', async (req, res, next) => {
         if (move.toClassId === null) graduated++; else promoted++;
       }
       const changed = await tx.schoolSettings.updateMany({
-        where: { schoolId, currentTerm: 3, currentSession: parsed.data.fromSession },
+        where: { schoolId, currentTerm: 3, currentSession: settings.currentSession },
         data: { currentTerm: 1, currentSession: parsed.data.targetSession },
       });
       if (changed.count !== 1) throw new StaleRegistryPlan('The school session changed. Preview promotions again.');
